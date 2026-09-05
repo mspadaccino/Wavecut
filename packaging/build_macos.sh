@@ -2,7 +2,13 @@
 #
 # Il bundle di macOS: DjCaddy.app e il DMG che lo consegna.
 #
-#     ./packaging/build_macos.sh
+#     ./packaging/build_macos.sh          # 1.1 → 1.2
+#     ./packaging/build_macos.sh --2      # riparte da 2.0
+#
+# A ogni build l'ultimo numero della versione sale da solo; `--N` invece
+# riparte da N.0. Il numero viene scritto in pyproject.toml prima di
+# costruire: da lì lo leggono il nome del DMG e l'Info.plist dell'app, così
+# restano allineati.
 #
 # Vuole l'ambiente completo (`poetry install`, essentia compresa), ffmpeg
 # installato, i modelli Essentia in ~/essentia_models e il checkpoint Demucs
@@ -18,8 +24,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -1)"
+CURRENT="$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -1)"
+case "${1:-}" in
+    "")       VERSION="${CURRENT%.*}.$(( ${CURRENT##*.} + 1 ))" ;;
+    --[0-9]*) VERSION="${1#--}.0" ;;
+    *)        echo "uso: $0 [--N]   (--2 riparte da 2.0)" >&2; exit 2 ;;
+esac
 DMG="dist/DjCaddy-${VERSION}.dmg"
+
+echo "==> versione $CURRENT → $VERSION"
+poetry version "$VERSION"
 
 echo "==> icona"
 poetry run python packaging/make_icon.py

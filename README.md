@@ -1126,7 +1126,9 @@ dist/DjCaddy-0.1.0.dmg    ~780 MB
 PyInstaller takes about **three and a half minutes** on a quiet machine once
 `build/` is warm; the DMG step is the slow one, because it compresses two
 gigabytes. The version in the DMG name and in the app's Info.plist both come
-from `pyproject.toml` — that is the only place it is written.
+from `pyproject.toml` — that is the only place it is written. Every build
+bumps its last number by one (1.1 becomes 1.2) and writes it there before
+building; `./packaging/build_macos.sh --2` starts over from 2.0 instead.
 
 The signature is **ad-hoc, not notarised**: enough to run it here, and on
 another machine if you open it with right-click ▸ Open the first time.
