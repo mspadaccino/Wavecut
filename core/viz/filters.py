@@ -106,20 +106,25 @@ def chapter_named(name: str) -> dict | None:
 
 
 def matching_tracks(frame: pd.DataFrame, pool, words: list[str]) -> list[int]:
-    """Le posizioni che contengono TUTTE le parole, nel nome o nella cartella.
+    """Le posizioni che contengono TUTTE le parole: nel nome del file, nella
+    cartella, nel titolo o nell'artista dei tag.
 
     A parole sparse e non a sottostringa: "madonna lucky" deve trovare
     "Madonna - Lucky Star (Extended Dance Remix)", che una ricerca contigua
     non trova. L'ordine non conta — chi cerca ricorda i pezzi di un titolo,
     non come sono disposti.
 
-    Si guarda nel nome del file e nella cartella perché è lì che stanno
-    artista e titolo: la mappa non conserva i tag, e in una libreria da DJ il
-    nome del file li porta quasi sempre entrambi.
+    Nome del file e cartella perché in una libreria da DJ portano quasi
+    sempre artista e titolo; i tag perché quando il file si chiama "Track
+    08" sono l'unico posto in cui stanno. Una mappa fatta prima che i tag
+    si leggessero non ha le due colonne, e cerca come prima.
     """
     inside = frame.loc[list(pool)]
-    hay = (inside["name"].fillna("") + " "
-           + inside["folder"].fillna("")).map(folded)
+    hay = inside["name"].fillna("") + " " + inside["folder"].fillna("")
+    for column in ("title", "artist"):
+        if column in inside:
+            hay = hay + " " + inside[column].fillna("").astype(str)
+    hay = hay.map(folded)
     keep = pd.Series(True, index=hay.index)
     for word in words:
         # Anche le parole cercate, non solo il testo in cui si cerca: farlo

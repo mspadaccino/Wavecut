@@ -61,6 +61,18 @@ def test_case_does_not_matter():
     assert matching_tracks(frame, _all(frame), ["BANANARAMA"]) == [1]
 
 
+def test_the_tags_count_too_when_the_file_name_says_nothing():
+    # "Track 08.mp3" con i tag: si trova per artista e per titolo, e a
+    # parole sparse fra nome, cartella e tag.
+    frame = _library().assign(
+        title=["Lucky Star", "", "", "Home"],
+        artist=["Madonna", "", "", "Julie McKnight"])
+    frame.loc[3, "name"] = "Track 08.mp3"
+    assert matching_tracks(frame, _all(frame), ["mcknight"]) == [3]
+    assert matching_tracks(frame, _all(frame), ["home", "b-sides"]) == [3]
+    assert matching_tracks(frame, _all(frame), ["madonna"]) == [0, 3]
+
+
 def test_the_search_stays_inside_the_pool():
     """I filtri della pagina restringono già l'universo: la ricerca non deve
     ripescare un brano che quelli hanno escluso."""
