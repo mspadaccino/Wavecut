@@ -902,9 +902,9 @@ class SetBuilderPanel(QWidget):
                 "_path": frame.at[i, "path"],
             })
         shown = pd.DataFrame(listed, columns=[
-            "#", "cost", "file", "BPM", "key", "energy", "groove", "emotion",
-            "sound", "bpm cost", "key cost", "mood", "genres", "folder",
-            "_path"])
+            "#", "cost", "file", "title", "artist", "BPM", "key", "energy",
+            "groove", "emotion", "sound", "bpm cost", "key cost", "mood",
+            "genres", "folder", "_path"])
         self._mixes_table.set_tracks(
             shown, genre_colors(frame, shown["genres"], dark=theme.DARK))
         marks, told = double_marks(
@@ -1023,7 +1023,8 @@ class SetBuilderPanel(QWidget):
         walk = self._walk()
         self._chain_told.setText(f"<b>The chain — {len(walk)} track(s)</b>")
         table = chain_table(frame, at_path, walk, common)
-        order = ["#", "file", "BPM", "key", "energy", "groove", "emotion",
+        order = ["#", "file", "title", "artist", "BPM", "key", "energy",
+                 "groove", "emotion",
                  "Δbpm", "Δkey", "Δenergy", "Δgroove", "mood", "genres",
                  "folder", "_path"]
         table = table[[c for c in order if c in table.columns]]

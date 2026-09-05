@@ -81,8 +81,8 @@ def playlist_rows(frame: pd.DataFrame, cost: TransitionCost,
             row["chapter"] = ([ch_lookup[i]] if i in ch_lookup else [])
         listed.append(row)
     order = ["#"] + (["chapter"] if ch_lookup is not None else []) + \
-        ["file", "BPM", "key", "energy", "groove", "emotion",
-         "from previous", "mood", "genres", "folder", "_path"]
+        ["file", "title", "artist", "BPM", "key", "energy", "groove",
+         "emotion", "from previous", "mood", "genres", "folder", "_path"]
     return pd.DataFrame(listed, columns=order)
 
 
