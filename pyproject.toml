@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "djcaddy"
-version = "0.1.0"
+version = "2.0"
 description = "Analisi di una libreria mp3 per DJing: classificazione genere/vibe e phrase boundary suggerite per il posizionamento manuale degli hot cue."
 authors = ["Maurizio Spadaccino <mspadaccino@gmail.com>"]
 readme = "README.md"
