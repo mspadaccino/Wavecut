@@ -535,7 +535,7 @@ a new one — and tells you which were already there. **Export ▾** writes a
 *copy* wherever you like: an M3U8 of this playlist, or a rekordbox XML of
 this playlist or of **the whole shelf** — a `DjCaddy` folder with one
 playlist per name, a track filed in two of them written once, so a night of
-twelve sets is one import. The third entry, **Straight into rekordbox**,
+twelve sets is one import. The third entry, **Write shelf to Rekordbox as playlists**,
 skips the XML altogether: the shelf is written into rekordbox's own library
 as that same `DjCaddy` folder, a playlist already there with the same name
 rebuilt as on the shelf and nothing else touched — the same rules as the

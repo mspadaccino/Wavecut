@@ -570,7 +570,7 @@ class PlaylistPanel(QWidget):
             "the shelf comes out as a «DjCaddy» folder with one playlist "
             "per name, so a night of twelve sets is one import."))
         self._save_xml.triggered.connect(self._on_save_xml)
-        self._write_rb = QAction("Straight into rekordbox (the whole shelf)…",
+        self._write_rb = QAction("Write shelf to Rekordbox as playlists…",
                                  self)
         self._write_rb.setToolTip(theme.hint(
             "No XML, no import: the shelf is written into rekordbox's own "

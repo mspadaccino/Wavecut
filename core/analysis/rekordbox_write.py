@@ -143,6 +143,21 @@ def _composed(text: str) -> str:
     return unicodedata.normalize("NFC", text)
 
 
+def name_forms(name: str) -> list[str]:
+    """Il nome del file in ogni forma in cui rekordbox potrebbe averlo
+    scritto: com'è, composto, scomposto.
+
+    Il ripiego di `find_track` cerca per nome e POI confronta i percorsi
+    composti — ma se il nome stesso arriva dal disco di un Mac ("Crème" in
+    due caratteri) e rekordbox lo tiene in uno, la ricerca per nome non
+    porta nessun candidato e il confronto non avviene mai. Misurato: due
+    brani accentati su 177 dati per "non in rekordbox" mentre c'erano.
+    """
+    forms = [name, unicodedata.normalize("NFC", name),
+             unicodedata.normalize("NFD", name)]
+    return list(dict.fromkeys(forms))
+
+
 def cue_row_values(marker: RekordboxMarker) -> dict:
     """I campi di `djmdCue` per un marcatore — la parte PURA, senza database.
 
@@ -258,7 +273,7 @@ def find_track(db, filepath: Path):
         return row
     for candidate in db.session.execute(
             select(DjmdContent).where(
-                DjmdContent.FileNameL == filepath.name)).scalars():
+                DjmdContent.FileNameL.in_(name_forms(filepath.name)))).scalars():
         if _composed(candidate.FolderPath or "") == wanted:
             return candidate
     return None

@@ -192,3 +192,18 @@ def test_refuses_a_loop_that_ends_before_it_starts():
 def test_accepts_the_plan_the_page_builds():
     check_markers(plan_of(11, [(45.0, 61.5), (120.0, 138.0)],
                           hot={"sec0": True, "vs0": True}).markers)
+
+
+# --- il brano cercato per nome, con gli accenti in tutte le forme ---------
+
+def test_the_name_is_searched_composed_and_decomposed_too():
+    import unicodedata
+    from core.analysis.rekordbox_write import name_forms
+
+    decomposed = unicodedata.normalize("NFD", "Kid Crème Club Mix.flac")
+    composed = unicodedata.normalize("NFC", "Kid Crème Club Mix.flac")
+    assert decomposed != composed
+    assert set(name_forms(decomposed)) == {decomposed, composed}
+    assert set(name_forms(composed)) == {decomposed, composed}
+    # Senza accenti c'e' una forma sola, e non tre copie della stessa.
+    assert name_forms("plain.mp3") == ["plain.mp3"]
