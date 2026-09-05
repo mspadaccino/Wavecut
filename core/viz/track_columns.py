@@ -165,6 +165,11 @@ COLUMN_HELP = {
          "is swapped, so writing 1 on the last row opens the set with it.",
     "file": "The file name. Two tracks can carry the same one, which is why "
             "the folder is in the last column.",
+    "title": "The title as the file's tags spell it. Empty when the file "
+             "carries no tags, or when the map has not read them yet — "
+             "Map settings has a button for that.",
+    "artist": "The artist as the file's tags spell it. Empty for the same "
+              "reasons as the title.",
     "BPM": "Tempo in beats per minute. Read from the file's tags when it "
            "has them — a DJ library usually does — and measured only when "
            "it does not, so it matches what the decks show.",
@@ -272,6 +277,11 @@ def reading(row, common: dict[str, int]) -> dict:
     bpm = _value(row, "bpm")
     return {
         "file": row["name"],
+        # Dai tag, e a fianco del nome del file e non al suo posto: il nome
+        # e' quello con cui si ritrova il brano su disco, e un tag puo'
+        # mancare o mentire.
+        "title": _value(row, "title"),
+        "artist": _value(row, "artist"),
         "BPM": round(bpm) if bpm is not None else None,
         "key": _pill(_value(row, "camelot")),
         "energy": _pill(energy_level(_value(row, "energy"))),
@@ -291,8 +301,8 @@ def reading(row, common: dict[str, int]) -> dict:
 # brano, come suona, da dove viene. Le tabelle che ci aggiungono qualcosa di
 # proprio — un costo, uno scarto, un numero d'ordine — se lo infilano dove
 # serve invece di riscrivere tutta la fila.
-READING_ORDER = ["file", "BPM", "key", "energy", "groove", "emotion", "mood",
-                 "genres", "folder"]
+READING_ORDER = ["file", "title", "artist", "BPM", "key", "energy", "groove",
+                 "emotion", "mood", "genres", "folder"]
 
 
 def genre_colors(frame: pd.DataFrame, shown, dark: bool) -> dict[str, str]:

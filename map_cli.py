@@ -30,7 +30,7 @@ from pathlib import Path
 
 import numpy as np
 
-from core.analysis import energy, mood_scale
+from core.analysis import energy, mood_scale, titles
 from core.analysis.essentia_tags import available, missing_models
 from core.analysis.map_job import DEFAULT_MAP_STATE_FILE, run_job
 from core.analysis.map_profile import ProfileSettings, default_workers
@@ -177,10 +177,24 @@ def main() -> None:
     parser.add_argument("--fields", action="store_true",
                         help="cosa la mappa ha addosso campo per campo, e se "
                              "energia e valence dicono due cose diverse")
+    parser.add_argument("--titles", action="store_true",
+                        help="Legge titolo e artista dai tag sulle righe che "
+                             "non li hanno, senza rifare l'analisi")
     args = parser.parse_args()
 
     if args.fields:
         fields(MapStore.load(args.store))
+        return
+
+    if args.titles:
+        store = MapStore.load(args.store)
+        todo = len(titles.missing(store.rows))
+        print(f"Righe senza titolo: {todo:,} su {len(store):,}")
+        done = titles.backfill(store, on_progress=lambda n, of: (
+            sys.stdout.write(f"\r  {n:,}/{of:,}"), sys.stdout.flush()))
+        print(f"\nScritte {done:,}."
+              + (f" Ne restano {todo - done:,}: file non raggiungibili."
+                 if todo - done else ""))
         return
 
     projection = ProjectionSettings(n_neighbors=args.neighbors,

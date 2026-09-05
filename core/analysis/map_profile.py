@@ -124,6 +124,11 @@ class TrackProfile:
 
     path: Path
     duration: float = 0.0
+    # Titolo e artista come li portano i tag del file, vuoti se non li porta.
+    # Il nome del file resta a parte: e' quello con cui si ritrova il brano
+    # su disco, e con nomi tipo "Track 08.mp3" e' tutto cio' che dice.
+    title: str = ""
+    artist: str = ""
     bpm: float | None = None
     camelot: str | None = None
     key: str | None = None
@@ -156,6 +161,8 @@ class TrackProfile:
         return {
             "path": str(self.path),
             "name": self.path.name,
+            "title": self.title,
+            "artist": self.artist,
             "folder": str(self.path.parent),
             "duration": round(self.duration, 1),
             "bpm": round(self.bpm, 1) if self.bpm else None,
@@ -339,6 +346,26 @@ def read_tag_tempo_key(path: Path) -> tuple[float | None, str | None]:
     return (tempo if tempo and 40 <= tempo <= 220 else None), (str(key) if key else None)
 
 
+def read_tag_title_artist(path: Path) -> tuple[str, str]:
+    """Titolo e artista come li portano i tag, o due stringhe vuote.
+
+    `easy=True` espone le stesse due chiavi su ID3, Vorbis comment e MP4,
+    che e' il motivo per cui il lettore del genere in `tags.py` lo usa. Un
+    file senza tag o che mutagen non apre non e' un errore: e' un brano che
+    in tabella mostra il solo nome del file.
+    """
+    import mutagen
+
+    try:
+        audio = mutagen.File(path, easy=True)
+    except Exception:                                   # noqa: BLE001
+        return "", ""
+    if audio is None:
+        return "", ""
+    return (_tag_first(audio.get("title")) or "",
+            _tag_first(audio.get("artist")) or "")
+
+
 def _tag_first(values) -> str | None:
     if values is None:
         return None
@@ -438,6 +465,7 @@ class ProfileAnalyzer:
         # mezzo secondo a giro.
         if settings.trust_tags:
             profile.bpm, profile.key = read_tag_tempo_key(path)
+        profile.title, profile.artist = read_tag_title_artist(path)
         rhythm_start = int(rhythm_offset(duration, settings) * ANALYSIS_RATE)
         middle = (audio[rhythm_start:
                         rhythm_start + int(settings.rhythm_seconds * ANALYSIS_RATE)]

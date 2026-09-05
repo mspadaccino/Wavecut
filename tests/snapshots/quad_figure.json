@@ -7,52 +7,59 @@
      "Track 00.mp3",
      110.0,
      "1A",
-     "Electronic - House; Electronic - Minimal"
+     "Electronic - House; Electronic - Minimal",
+     ""
     ],
     [
      3,
      "Track 03.mp3",
      113.0,
      "8B",
-     "Electronic - House"
+     "Electronic - House",
+     ""
     ],
     [
      6,
      "Track 06.mp3",
      116.0,
      "4A",
-     "Electronic - House; Electronic - Minimal"
+     "Electronic - House; Electronic - Minimal",
+     ""
     ],
     [
      9,
      "Track 09.mp3",
      119.0,
      "11B",
-     "Electronic - House"
+     "Electronic - House",
+     ""
     ],
     [
      12,
      "Track 12.mp3",
      122.0,
      "7A",
-     "Electronic - House; Electronic - Minimal"
+     "Electronic - House; Electronic - Minimal",
+     ""
     ],
     [
      15,
      "Track 15.mp3",
      125.0,
      "2B",
-     "Electronic - House"
+     "Electronic - House",
+     ""
     ],
     [
      18,
      "Track 18.mp3",
      128.0,
      "10A",
-     "Electronic - House; Electronic - Minimal"
+     "Electronic - House; Electronic - Minimal",
+     ""
     ]
    ],
-   "hovertemplate": "<b>%{customdata[1]}</b><br>%{customdata[2]} BPM \u00b7 %{customdata[3]}<br>%{customdata[4]}<extra></extra>",
+   "hovertemplate": "<b>%{customdata[1]}</b>%{customdata[5]}<br>%{customdata[2]} BPM \u00b7 %{customdata[3]}<br>%{customdata[4]}<extra></extra>",
    "marker": {
     "color": "#e0503b",
     "line": {
@@ -77,6 +84,7 @@
      "opacity": 1.0
     }
    },
+   "type": "scattergl",
    "x": [
     0.0,
     0.1304,
@@ -94,8 +102,7 @@
     0.4783,
     0.3478,
     0.2174
-   ],
-   "type": "scattergl"
+   ]
   },
   {
    "customdata": [
@@ -104,52 +111,59 @@
      "Track 01.mp3",
      111.0,
      "3B",
-     "Electronic - Techno"
+     "Electronic - Techno",
+     ""
     ],
     [
      4,
      "Track 04.mp3",
      114.0,
      "11A",
-     "Electronic - Techno; Electronic - Minimal"
+     "Electronic - Techno; Electronic - Minimal",
+     ""
     ],
     [
      7,
      "Track 07.mp3",
      117.0,
      "6B",
-     "Electronic - Techno"
+     "Electronic - Techno",
+     ""
     ],
     [
      10,
      "Track 10.mp3",
      120.0,
      "2A",
-     "Electronic - Techno; Electronic - Minimal"
+     "Electronic - Techno; Electronic - Minimal",
+     ""
     ],
     [
      13,
      "Track 13.mp3",
      123.0,
      "9B",
-     "Electronic - Techno"
+     "Electronic - Techno",
+     ""
     ],
     [
      16,
      "Track 16.mp3",
      126.0,
      "5A",
-     "Electronic - Techno; Electronic - Minimal"
+     "Electronic - Techno; Electronic - Minimal",
+     ""
     ],
     [
      19,
      "Track 19.mp3",
      129.0,
      "12B",
-     "Electronic - Techno"
+     "Electronic - Techno",
+     ""
     ]
    ],
-   "hovertemplate": "<b>%{customdata[1]}</b><br>%{customdata[2]} BPM \u00b7 %{customdata[3]}<br>%{customdata[4]}<extra></extra>",
+   "hovertemplate": "<b>%{customdata[1]}</b>%{customdata[5]}<br>%{customdata[2]} BPM \u00b7 %{customdata[3]}<br>%{customdata[4]}<extra></extra>",
    "marker": {
     "color": "#3d9be0",
     "line": {
@@ -174,6 +188,7 @@
      "opacity": 1.0
     }
    },
+   "type": "scattergl",
    "x": [
     0.0435,
     0.1739,
@@ -191,8 +206,7 @@
     0.4348,
     0.3043,
     0.1739
-   ],
-   "type": "scattergl"
+   ]
   },
   {
    "customdata": [
@@ -201,52 +215,59 @@
      "Track 02.mp3",
      112.0,
      "6A",
-     "Funk / Soul - Disco; Electronic - Minimal"
+     "Funk / Soul - Disco; Electronic - Minimal",
+     ""
     ],
     [
      5,
      "Track 05.mp3",
      115.0,
      "1B",
-     "Funk / Soul - Disco"
+     "Funk / Soul - Disco",
+     ""
     ],
     [
      8,
      "Track 08.mp3",
      118.0,
      "9A",
-     "Funk / Soul - Disco; Electronic - Minimal"
+     "Funk / Soul - Disco; Electronic - Minimal",
+     ""
     ],
     [
      11,
      "Track 11.mp3",
      121.0,
      "4B",
-     "Funk / Soul - Disco"
+     "Funk / Soul - Disco",
+     ""
     ],
     [
      14,
      "Track 14.mp3",
      124.0,
      "12A",
-     "Funk / Soul - Disco; Electronic - Minimal"
+     "Funk / Soul - Disco; Electronic - Minimal",
+     ""
     ],
     [
      17,
      "Track 17.mp3",
      127.0,
      "7B",
-     "Funk / Soul - Disco"
+     "Funk / Soul - Disco",
+     ""
     ],
     [
      20,
      "Track 20.mp3",
      130.0,
      "3A",
-     "Funk / Soul - Disco; Electronic - Minimal"
+     "Funk / Soul - Disco; Electronic - Minimal",
+     ""
     ]
    ],
-   "hovertemplate": "<b>%{customdata[1]}</b><br>%{customdata[2]} BPM \u00b7 %{customdata[3]}<br>%{customdata[4]}<extra></extra>",
+   "hovertemplate": "<b>%{customdata[1]}</b>%{customdata[5]}<br>%{customdata[2]} BPM \u00b7 %{customdata[3]}<br>%{customdata[4]}<extra></extra>",
    "marker": {
     "color": "#3fbf7f",
     "line": {
@@ -271,6 +292,7 @@
      "opacity": 1.0
     }
    },
+   "type": "scattergl",
    "x": [
     0.087,
     0.2174,
@@ -288,8 +310,7 @@
     0.3913,
     0.2609,
     0.1304
-   ],
-   "type": "scattergl"
+   ]
   },
   {
    "customdata": [
@@ -298,24 +319,27 @@
      "Track 21.mp3",
      131.0,
      "5B",
-     "Rock - Prog"
+     "Rock - Prog",
+     ""
     ],
     [
      22,
      "Track 22.mp3",
      132.0,
      "8A",
-     "Pop - Italo; Electronic - Minimal"
+     "Pop - Italo; Electronic - Minimal",
+     ""
     ],
     [
      23,
      "Track 23.mp3",
      133.0,
      "10B",
-     "Jazz - Fusion"
+     "Jazz - Fusion",
+     ""
     ]
    ],
-   "hovertemplate": "<b>%{customdata[1]}</b><br>%{customdata[2]} BPM \u00b7 %{customdata[3]}<br>%{customdata[4]}<extra></extra>",
+   "hovertemplate": "<b>%{customdata[1]}</b>%{customdata[5]}<br>%{customdata[2]} BPM \u00b7 %{customdata[3]}<br>%{customdata[4]}<extra></extra>",
    "marker": {
     "color": "#9aa4b0",
     "line": {
@@ -336,6 +360,7 @@
      "opacity": 1.0
     }
    },
+   "type": "scattergl",
    "x": [
     0.913,
     0.9565,
@@ -345,8 +370,7 @@
     0.087,
     0.0435,
     0.0
-   ],
-   "type": "scattergl"
+   ]
   },
   {
    "hoverinfo": "skip",
@@ -375,6 +399,7 @@
     "size": 9
    },
    "textposition": "top center",
+   "type": "scattergl",
    "x": [
     0.0,
     0.1739,
@@ -386,8 +411,7 @@
     0.8261,
     0.6522,
     0.913
-   ],
-   "type": "scattergl"
+   ]
   },
   {
    "hoverinfo": "skip",
@@ -402,6 +426,7 @@
    "mode": "markers",
    "name": "in the chain",
    "showlegend": true,
+   "type": "scattergl",
    "x": [
     0.1739,
     0.4348
@@ -409,8 +434,7 @@
    "y": [
     0.8261,
     0.5652
-   ],
-   "type": "scattergl"
+   ]
   },
   {
    "hoverinfo": "skip",
@@ -425,6 +449,7 @@
    "mode": "markers",
    "name": "mixes out of it",
    "showlegend": true,
+   "type": "scattergl",
    "x": [
     0.4783,
     0.5652
@@ -432,8 +457,7 @@
    "y": [
     0.5217,
     0.4348
-   ],
-   "type": "scattergl"
+   ]
   },
   {
    "hoverinfo": "skip",
@@ -448,6 +472,7 @@
    "mode": "markers",
    "name": "sounds like it",
    "showlegend": true,
+   "type": "scattergl",
    "x": [
     0.5217,
     0.6087
@@ -455,8 +480,7 @@
    "y": [
     0.4783,
     0.3913
-   ],
-   "type": "scattergl"
+   ]
   },
   {
    "hoverinfo": "skip",
@@ -471,6 +495,7 @@
    "mode": "markers",
    "name": "selected",
    "showlegend": true,
+   "type": "scattergl",
    "x": [
     0.3043,
     0.3913
@@ -478,8 +503,7 @@
    "y": [
     0.6957,
     0.6087
-   ],
-   "type": "scattergl"
+   ]
   },
   {
    "hoverinfo": "skip",
@@ -494,13 +518,13 @@
    "mode": "markers",
    "name": "current PL selection",
    "showlegend": true,
+   "type": "scattergl",
    "x": [
     0.1304
    ],
    "y": [
     0.8696
-   ],
-   "type": "scattergl"
+   ]
   },
   {
    "hoverinfo": "skip",
@@ -515,13 +539,13 @@
    "mode": "markers",
    "name": "seed",
    "showlegend": true,
+   "type": "scattergl",
    "x": [
     0.2174
    ],
    "y": [
     0.7826
-   ],
-   "type": "scattergl"
+   ]
   }
  ],
  "layout": {
@@ -591,6 +615,34 @@
     "yshift": 18
    }
   ],
+  "height": 640,
+  "hoverlabel": {
+   "align": "left",
+   "font": {
+    "size": 11
+   }
+  },
+  "hovermode": "closest",
+  "legend": {
+   "bgcolor": "rgba(0,0,0,0)",
+   "font": {
+    "color": "#1b1f27",
+    "size": 10
+   },
+   "itemsizing": "constant",
+   "orientation": "h",
+   "x": 0,
+   "y": 1.04,
+   "yanchor": "bottom"
+  },
+  "margin": {
+   "b": 0,
+   "l": 0,
+   "r": 0,
+   "t": 0
+  },
+  "paper_bgcolor": "#ffffff",
+  "plot_bgcolor": "#ffffff",
   "shapes": [
    {
     "layer": "below",
@@ -621,52 +673,24 @@
     "y1": 0.5
    }
   ],
-  "margin": {
-   "l": 0,
-   "r": 0,
-   "t": 0,
-   "b": 0
-  },
-  "hoverlabel": {
-   "font": {
-    "size": 11
-   },
-   "align": "left"
-  },
-  "legend": {
-   "font": {
-    "size": 10,
-    "color": "#1b1f27"
-   },
-   "orientation": "h",
-   "x": 0,
-   "y": 1.04,
-   "yanchor": "bottom",
-   "bgcolor": "rgba(0,0,0,0)",
-   "itemsizing": "constant"
-  },
+  "showlegend": true,
   "xaxis": {
-   "visible": true,
+   "automargin": true,
+   "showgrid": false,
    "title": {
     "text": "energy"
    },
-   "automargin": true,
-   "showgrid": false,
+   "visible": true,
    "zeroline": false
   },
   "yaxis": {
-   "visible": true,
+   "automargin": true,
+   "showgrid": false,
    "title": {
     "text": "valence (mood)"
    },
-   "automargin": true,
-   "showgrid": false,
+   "visible": true,
    "zeroline": false
-  },
-  "height": 640,
-  "paper_bgcolor": "#ffffff",
-  "plot_bgcolor": "#ffffff",
-  "showlegend": true,
-  "hovermode": "closest"
+  }
  }
 }

@@ -445,3 +445,38 @@ def test_every_axis_says_what_it_means():
     # E le due che sono ranghi lo dicono, perche' e' l'equivoco possibile.
     for name in ("energy", "valence (mood)"):
         assert "rank" in AXIS_HELP[name]
+
+
+# --- l'hint sopra un punto -------------------------------------------------
+
+def _hover(figure, index: int) -> str:
+    """L'hint di un punto, con il template riempito a mano come fa Plotly."""
+    for trace in figure.data:
+        if trace.customdata is None:
+            continue
+        for row in trace.customdata:
+            if row[0] == index:
+                text = trace.hovertemplate
+                for n, value in enumerate(row):
+                    text = text.replace(f"%{{customdata[{n}]}}", str(value))
+                return text
+    raise AssertionError(f"nessun punto con indice {index}")
+
+
+def test_the_hint_spells_artist_and_title_under_the_file_name():
+    frame = _drawn().assign(title=["Home", "", "Venus", None],
+                            artist=["Julie McKnight", "", "", "Corona"])
+    coords = np.column_stack([np.arange(4.0), np.zeros(4)])
+    figure = build_figure(frame, ["House"], coords, playlist=[], seed=None)
+    assert _hover(figure, 0).startswith("<b>0.flac</b><br>Julie McKnight – Home<br>")
+    # Senza tag nessuna riga in piu': il nome del file e subito i BPM.
+    assert _hover(figure, 1).startswith("<b>1.flac</b><br>120 BPM")
+    # Uno solo dei due: niente trattino che unisce al vuoto.
+    assert _hover(figure, 2).startswith("<b>2.flac</b><br>Venus<br>")
+    assert _hover(figure, 3).startswith("<b>3.flac</b><br>Corona<br>")
+
+
+def test_a_map_made_before_the_tags_were_read_still_draws_its_hints():
+    coords = np.column_stack([np.arange(4.0), np.zeros(4)])
+    figure = build_figure(_drawn(), ["House"], coords, playlist=[], seed=None)
+    assert _hover(figure, 0).startswith("<b>0.flac</b><br>120 BPM")

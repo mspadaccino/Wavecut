@@ -445,7 +445,7 @@ class TrackTable(QTableView):
     _WIDTHS = {CHECK_COLUMN: 30, CHECK_A_COLUMN: 40, CHECK_B_COLUMN: 40,
                PLAY_COLUMN: 30, PLAY_A_COLUMN: 40, PLAY_B_COLUMN: 40,
                FAVOURITE_COLUMN: 30,
-               "#": 40, "file": 320,
+               "#": 40, "file": 320, "title": 200, "artist": 160,
                "file A": 300, "file B": 300,
                "BPM": 52, "key": 52,
                "energy": 60, "groove": 64, "emotion": 64, "mood": 120,

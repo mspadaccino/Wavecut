@@ -271,6 +271,22 @@ def marker_sizes(frame: pd.DataFrame, column: str | None):
     return MIN_SIZE + share * (MAX_SIZE - MIN_SIZE)
 
 
+def tag_line(frame: pd.DataFrame) -> list[str]:
+    """La riga dei tag sotto il nome del file nell'hint: "<br>Artista – Titolo".
+
+    Comincia con l'a capo perche' e' lei a decidere se esserci: il template
+    dell'hover non sa scrivere "se c'e'", e una riga vuota sotto il nome
+    sarebbe un buco su ogni brano senza tag. Una mappa fatta prima che i tag
+    si leggessero non ha le colonne, e va bene: nessuna riga in piu'.
+    """
+    def column(name: str) -> list[str]:
+        return (frame[name].fillna("").astype(str).tolist() if name in frame
+                else [""] * len(frame))
+    return ["<br>" + " – ".join(p for p in (artist, title) if p)
+            if (artist or title) else ""
+            for artist, title in zip(column("artist"), column("title"))]
+
+
 def build_figure(drawn: pd.DataFrame, top_genres: list[str], coords,
                  playlist: list[int], seed: int | None,
                  seed_name: str | None = None,
@@ -325,7 +341,9 @@ def build_figure(drawn: pd.DataFrame, top_genres: list[str], coords,
             # legenda: non c'è un "principale" da cui distinguersi.
             name=("tracks" if genre == "other" and not top_genres
                   else genre[:28]),
-            customdata=part[["index", "name", "bpm", "camelot", "genres"]].to_numpy(),
+            customdata=part.assign(_tagged=tag_line(part))[
+                ["index", "name", "bpm", "camelot", "genres", "_tagged"]
+            ].to_numpy(),
             # La nuvola è TENUE, sempre: è il territorio, e quello che conta
             # ci sta sopra — i segni, il battito del brano in ascolto, i
             # punti presi con lasso o riquadro, che tornano pieni. Prima era
@@ -339,8 +357,9 @@ def build_figure(drawn: pd.DataFrame, top_genres: list[str], coords,
                 "line": {"width": 0.5, "color": skin["plot"]},
             },
             selected={"marker": {"opacity": 1.0}},
-            hovertemplate="<b>%{customdata[1]}</b><br>%{customdata[2]} BPM · "
-                          "%{customdata[3]}<br>%{customdata[4]}<extra></extra>",
+            hovertemplate="<b>%{customdata[1]}</b>%{customdata[5]}<br>"
+                          "%{customdata[2]} BPM · %{customdata[3]}<br>"
+                          "%{customdata[4]}<extra></extra>",
         ))
 
     # Il nome del genere scritto in mezzo al suo gruppo: la legenda dice quale

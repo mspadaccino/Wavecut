@@ -1,6 +1,7 @@
 {
  "bare": {
   "BPM": null,
+  "artist": null,
   "emotion": [],
   "energy": [],
   "file": "bare.mp3",
@@ -8,10 +9,12 @@
   "genres": [],
   "groove": [],
   "key": [],
-  "mood": ""
+  "mood": "",
+  "title": null
  },
  "bright": {
   "BPM": 114,
+  "artist": null,
   "emotion": [
    "\u2191"
   ],
@@ -30,7 +33,8 @@
   "key": [
    "11A"
   ],
-  "mood": "Summer \u00b7 Happy"
+  "mood": "Summer \u00b7 Happy",
+  "title": null
  },
  "camelot_junk": [
   "#c7ccd4",
@@ -60,6 +64,7 @@
  },
  "rich": {
   "BPM": 111,
+  "artist": null,
   "emotion": [
    "\u2191"
   ],
@@ -77,6 +82,7 @@
   "key": [
    "3B"
   ],
-  "mood": "Dark \u00b7 Deep"
+  "mood": "Dark \u00b7 Deep",
+  "title": null
  }
 }

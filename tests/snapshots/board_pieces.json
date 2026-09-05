@@ -485,6 +485,7 @@
  "spelled": [
   {
    "BPM": 111,
+   "artist": null,
    "emotion": [
     "\u2191"
    ],
@@ -503,6 +504,7 @@
     "3B"
    ],
    "mood": "Dark \u00b7 Deep",
+   "title": null,
    "\u0394bpm": 1,
    "\u0394energy": 0,
    "\u0394groove": 0.03,
@@ -510,6 +512,7 @@
   },
   {
    "BPM": 110,
+   "artist": null,
    "emotion": [
     "\u2191"
    ],
@@ -529,6 +532,7 @@
     "1A"
    ],
    "mood": "Energetic \u00b7 Happy",
+   "title": null,
    "\u0394bpm": null,
    "\u0394energy": null,
    "\u0394groove": null,

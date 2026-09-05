@@ -107,8 +107,9 @@ def test_the_columns_the_tables_actually_ask_for_are_all_covered():
     # aggiunge uno senza spiegazione, questo test lo trova.
     from core.viz.track_columns import COLUMN_HELP
 
-    asked = {"#", "file", "BPM", "folder", "cost", "sound", "bpm cost",
-             "key cost", "similarity", "copies", "Δbpm", "Δkey", "Δgroove"}
+    asked = {"#", "file", "title", "artist", "BPM", "folder", "cost", "sound",
+             "bpm cost", "key cost", "similarity", "copies", "Δbpm", "Δkey",
+             "Δgroove"}
     assert asked <= set(COLUMN_HELP)
 
 
@@ -147,3 +148,22 @@ def test_the_reading_carries_the_energy_when_the_row_has_it():
 
 def test_a_map_made_before_the_energy_existed_does_not_break_the_reading():
     assert reading(_track(), {})["energy"] == []
+
+
+# --- titolo e artista dai tag --------------------------------------------
+
+def test_the_title_and_the_artist_sit_next_to_the_file_name():
+    got = reading(_track(title="Home", artist="Julie McKnight"), {})
+    assert got["file"] == "A.mp3"
+    assert got["title"] == "Home" and got["artist"] == "Julie McKnight"
+    assert READING_ORDER[:3] == ["file", "title", "artist"]
+
+
+def test_a_track_without_tags_shows_an_empty_cell_not_the_word_nan():
+    assert reading(_track(title="", artist=None), {})["title"] is None
+    assert reading(_track(title="", artist=None), {})["artist"] is None
+
+
+def test_a_map_made_before_the_tags_were_read_does_not_break_the_reading():
+    got = reading(_track(), {})
+    assert got["title"] is None and got["artist"] is None
