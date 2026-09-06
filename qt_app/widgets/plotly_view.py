@@ -182,6 +182,14 @@ _PAGE = """<!doctype html><html><head><meta charset="utf-8">
       var div = document.getElementById("map");
       div.style.width = spec.layout.width ? spec.layout.width + "px" : "";
       document.body.classList.toggle("wide", !!spec.layout.width);
+      // L'ALTEZZA invece la detta sempre il riquadro. Le figure arrivano con
+      // `height=640` — la misura giusta per la pagina Streamlit — e finché
+      // quel numero resta nel layout Plotly lo prende alla lettera: con il
+      // riquadro più basso la pagina cresceva sotto il disegno e compariva
+      // la barra di scorrimento, che se ne andava solo al primo
+      // ridimensionamento vero (il lettore che si apre, per dire, che è come
+      // ce ne siamo accorti). Tolta di mezzo, autosize misura il div.
+      delete spec.layout.height;
       base = {data: spec.data, layout: spec.layout,
               notes: (spec.layout.annotations || [])};
       react(spec.data, spec.layout);
