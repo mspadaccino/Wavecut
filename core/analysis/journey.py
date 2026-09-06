@@ -51,17 +51,21 @@ REACH_MIN, REACH_MAX = 150, 1500
 
 
 def corridor(cost: TransitionCost, start: int, end: int | None,
-             pool=None, reach: int = REACH_MIN, song_of=None) -> list[int]:
+             pool=None, reach: int = REACH_MIN, song_of=None,
+             taken=None) -> list[int]:
     """I `reach` brani più a portata fra `start` ed `end`, senza i due e
     senza le copie della stessa canzone (la prima che si incontra resta).
 
     Con l'arrivo, il costo è la somma dei due: chi sta in mezzo costa poco
-    da entrambi. Senza, è il costo dalla partenza e basta.
+    da entrambi. Senza, è il costo dalla partenza e basta. `taken` sono i
+    brani già in scaletta: non entrano, e con `song_of` non entrano
+    nemmeno le loro copie.
     """
     candidates = (np.arange(len(cost.bpm)) if pool is None
                   else np.asarray(list(pool), dtype=int))
     ends = {int(start)} | ({int(end)} if end is not None else set())
-    candidates = candidates[~np.isin(candidates, list(ends))]
+    taken = {int(t) for t in taken} if taken is not None else set()
+    candidates = candidates[~np.isin(candidates, list(ends | taken))]
     if not len(candidates):
         return []
     distance = cost.to(int(start), candidates)
@@ -70,7 +74,7 @@ def corridor(cost: TransitionCost, start: int, end: int | None,
     order = candidates[np.argsort(distance, kind="stable")]
     if song_of is None:
         return [int(i) for i in order[:reach]]
-    seen = {song_of(i) for i in ends}
+    seen = {song_of(i) for i in ends | taken}
     out: list[int] = []
     for i in order:
         song = song_of(int(i))
@@ -110,11 +114,13 @@ def _viterbi(hops: np.ndarray, extra: np.ndarray, banned: np.ndarray,
 def plan(cost: TransitionCost, start: int, n: int, end: int | None = None,
          pool=None, arc_values: np.ndarray | None = None,
          w_arc: float = 0.0, song_of=None, reach: int | None = None,
-         twin: float = TWIN_SOUND) -> list[int]:
+         twin: float = TWIN_SOUND, taken=None) -> list[int]:
     """La fila di `n` brani da `start` a `end`, in ordine di scaletta.
 
     `pool` limita i candidati (i brani che passano i filtri); la partenza e
-    l'arrivo entrano comunque. `arc_values` è la matrice N × 4 di
+    l'arrivo entrano comunque. `taken` sono i brani già in scaletta, che
+    non si ripropongono — né loro né, con `song_of`, le loro copie: è la
+    catena che cresce da un capo. `arc_values` è la matrice N × 4 di
     `arc.measures` sulla libreria, e `w_arc` quanto conta stare nel
     capitolo giusto rispetto a una transizione: a 0 l'arco non parla.
     `song_of` tiene fuori le copie di un brano già in fila; `twin` è la
@@ -135,7 +141,7 @@ def plan(cost: TransitionCost, start: int, n: int, end: int | None = None,
     if reach is None:
         reach = min(REACH_MAX, max(REACH_MIN, REACH_PER_STEP * n))
     inner = corridor(cost, start, end, pool=pool, reach=reach,
-                     song_of=song_of)
+                     song_of=song_of, taken=taken)
     ring = [start] + inner + ([int(end)] if end is not None else [])
     if len(ring) < n:
         # Non c'è abbastanza da cui scegliere: si dà quello che si può,

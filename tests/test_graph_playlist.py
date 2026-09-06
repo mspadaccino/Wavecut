@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from core.analysis.graph_playlist import (CARD_SPAN, GraphPlaylist,
-                                          auto_chain, suggestions)
+                                          suggestions)
 from core.analysis.mixing import TransitionCost
 
 
@@ -311,22 +311,3 @@ def test_suggestions_can_look_ahead_of_the_source():
     assert [i for i, _, _ in found] == [2, 3]
     assert found[0][1] < found[1][1]
 
-
-def test_auto_chain_takes_the_top_of_the_roster_step_after_step():
-    cost = TransitionCost(_fan(0, 15, 30, 45, 60), [128] * 5, ["8A"] * 5)
-    assert auto_chain(cost, taken={0}, source=0, steps=3) == [1, 2, 3]
-
-
-def test_auto_chain_stops_when_the_roster_runs_dry():
-    cost = TransitionCost(_fan(0, 15, 30), [128] * 3, ["8A"] * 3)
-    assert auto_chain(cost, taken={0, 1}, source=1, steps=5) == [2]
-    assert auto_chain(cost, taken={0, 1}, source=1, steps=5, pool=[0, 1]) == []
-
-
-def test_auto_chain_follows_the_trend():
-    # Da 2 (30°) arrivando da 1 (15°): fermo, il prossimo è la 4 (20°), che
-    # sta a dieci gradi; in tendenza il punto sta verso i 45° e vince la 3.
-    cost = TransitionCost(_fan(0, 15, 30, 45, 20), [128] * 5, ["8A"] * 5)
-    assert auto_chain(cost, {0, 1, 2}, source=2, steps=1, previous=1) == [4]
-    assert auto_chain(cost, {0, 1, 2}, source=2, steps=1, previous=1,
-                      trend=1.0) == [3]

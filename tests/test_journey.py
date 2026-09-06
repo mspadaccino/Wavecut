@@ -106,6 +106,21 @@ def test_copies_of_the_same_song_enter_once():
     assert len({songs[i] for i in path}) == 4
 
 
+def test_what_is_already_on_the_chain_stays_out_with_its_copies():
+    # La catena ha già la 1 e la 3, e la 5 è la stessa canzone della 3:
+    # nessuna delle tre torna, né nel corridoio né nella fila.
+    cost = _cost(range(0, 140, 20))
+    songs = {0: "a", 1: "b", 2: "c", 3: "d", 4: "e", 5: "d", 6: "f"}
+    inner = corridor(cost, 0, None, reach=10, song_of=songs.get,
+                     taken=[1, 3])
+    assert not {1, 3, 5} & set(inner)
+    path = plan(cost, 0, 4, song_of=songs.get, taken=[1, 3], twin=0.0)
+    assert path[0] == 0 and not {1, 3, 5} & set(path) and len(path) == 4
+    # L'arrivo entra anche se è già in scaletta: è dove si è chiesto di
+    # andare.
+    assert plan(cost, 0, 3, end=6, taken=[1, 3, 6], twin=0.0)[-1] == 6
+
+
 def test_the_corridor_is_the_ellipse_between_the_ends():
     cost = _cost([0, 20, 40, 60, 80, 100, 170])
     # Fra 0 e 60 chi sta in mezzo viene prima di chi sta oltre.
