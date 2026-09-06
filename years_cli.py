@@ -29,10 +29,16 @@ from core.analysis import api_keys, year_guess
 from core.analysis.map_store import MapStore, default_store_dir
 
 # Stime di spesa, per il dry-run: token per brano in ingresso e in uscita
-# (misurati a spanne su righe come `year_guess.line`), e i prezzi batch di
-# Opus 5 al momento di scrivere. Un ordine di grandezza, non una fattura.
+# (misurati a spanne su righe come `year_guess.line`), e i prezzi batch —
+# metà del listino — al momento di scrivere, per milione di token, in e
+# out. Un modello non in tabella si stima come Opus. Un ordine di
+# grandezza, non una fattura.
 TOKENS_IN_PER_TRACK, TOKENS_OUT_PER_TRACK = 30, 18
-BATCH_USD_PER_MTOK_IN, BATCH_USD_PER_MTOK_OUT = 2.5, 12.5
+BATCH_USD_PER_MTOK = {
+    "claude-opus-5": (2.5, 12.5),
+    "claude-sonnet-5": (1.0, 5.0),
+    "claude-haiku-4-5": (0.5, 2.5),
+}
 
 
 def _client():
@@ -47,9 +53,10 @@ def _client():
     return anthropic.Anthropic(api_key=key)
 
 
-def _estimate(count: int) -> str:
-    usd = (count * TOKENS_IN_PER_TRACK * BATCH_USD_PER_MTOK_IN
-           + count * TOKENS_OUT_PER_TRACK * BATCH_USD_PER_MTOK_OUT) / 1e6
+def _estimate(count: int, model: str) -> str:
+    usd_in, usd_out = BATCH_USD_PER_MTOK.get(model, BATCH_USD_PER_MTOK["claude-opus-5"])
+    usd = (count * TOKENS_IN_PER_TRACK * usd_in
+           + count * TOKENS_OUT_PER_TRACK * usd_out) / 1e6
     return f"~${usd:.2f}"
 
 
@@ -86,7 +93,8 @@ def main() -> None:
         count = min(len(todo), args.limit) if args.limit else len(todo)
         print(f"Un --submit manderebbe {count:,} brani in "
               f"{len(year_guess.chunks(todo[:count], args.per_request)):,} "
-              f"richieste, {_estimate(count)} con {args.model} in batch.")
+              f"richieste, {_estimate(count, args.model)} con {args.model} "
+              "in batch.")
         if todo:
             print("\nLe prime righe, come le vede il modello:")
             for n, i in enumerate(todo[:5]):

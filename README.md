@@ -528,7 +528,8 @@ bare, renamed files, promos. For those, `years_cli.py` asks Claude the
 compilation), once, through the batch API at half price: forty tracks a
 request, title and artist from the tags plus the file and folder names,
 nothing else. The answer goes into a field of its own, `year_guess`, with
-how sure Claude was; the tag is never overwritten. A filter reads the tag
+how sure Claude was; the tag is never overwritten. Sonnet does this job
+(dating a record is knowledge, not reasoning); `--model` changes it. A filter reads the tag
 when there is one, the estimate when Claude was fairly sure of it, and the
 tab says how many estimates a list relies on. `--dry-run` says how many
 tracks would go and what it would cost; `--submit --limit 200` is the trial;

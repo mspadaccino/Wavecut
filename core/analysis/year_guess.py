@@ -33,7 +33,9 @@ from pathlib import Path
 
 from core.analysis.years import FIRST_YEAR, LAST_YEAR
 
-DEFAULT_MODEL = "claude-opus-5"
+# Sonnet: datare un disco è conoscenza, non ragionamento, e a quarantamila
+# brani il prezzo conta più della sfumatura. `--model` per cambiarlo.
+DEFAULT_MODEL = "claude-sonnet-5"
 PER_REQUEST = 40
 MAX_TOKENS = 4096
 
