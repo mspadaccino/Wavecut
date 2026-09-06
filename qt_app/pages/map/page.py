@@ -99,6 +99,7 @@ class QuadrantPane(QWidget):
         self._places = None
         self._ok = False
         self._labels = True
+        self._legend = True
 
         names = list(AXIS_FIELDS)
         self._by_x, self._by_y = QComboBox(), QComboBox()
@@ -124,10 +125,11 @@ class QuadrantPane(QWidget):
         box.addWidget(self._view, stretch=1)
 
     def set_cloud(self, drawn, top: list[str], frame, visible,
-                  labels: bool = True) -> None:
+                  labels: bool = True, legend: bool = True) -> None:
         self._drawn, self._top = drawn, top
         self._frame, self._visible = frame, visible
         self._labels = labels
+        self._legend = legend
         self._redraw()
 
     def update_overlays(self, marks: dict) -> None:
@@ -166,7 +168,7 @@ class QuadrantPane(QWidget):
         self._view.set_figure(build_figure(
             self._drawn, self._top, self._places, playlist=[], seed=None,
             axes=columns, titles=names, guides=guides, dark=theme.DARK,
-            labels=self._labels))
+            labels=self._labels, legend=self._legend))
         if self._marks is not None:
             self._view.set_overlays(overlay_figure(
                 self._places, self._marks, dark=theme.DARK))
@@ -252,6 +254,13 @@ class MapPage(QWidget):
             "Reggae, …). Turn them off where the groups overlap and the "
             "words cover the points."))
         self._labels.toggled.connect(lambda _: self._rebuild_cloud())
+        self._legend = QCheckBox("Legend")
+        self._legend.setChecked(True)
+        self._legend.setToolTip(theme.hint(
+            "The row of genre names under the chart, where a click turns a "
+            "genre off and on. Turn it off to give those pixels back to the "
+            "drawing — on a laptop screen it is a good slice of it."))
+        self._legend.toggled.connect(lambda _: self._rebuild_cloud())
         self._job_told = _dim("")
         self._job_told.setVisible(False)
         settings = QPushButton("⚙️ Map settings")
@@ -265,6 +274,7 @@ class MapPage(QWidget):
         bar.addWidget(self._size_by)
         bar.addSpacing(8)
         bar.addWidget(self._labels)
+        bar.addWidget(self._legend)
         bar.addStretch(1)
         bar.addWidget(self._job_told)
         bar.addWidget(settings)
@@ -559,7 +569,8 @@ class MapPage(QWidget):
             self._drawn = None
             self._map.set_figure(build_figure(
                 EMPTY_CLOUD, [], self._lib.store.coords[:self._lib.placed],
-                playlist=[], seed=None, dark=theme.DARK))
+                playlist=[], seed=None, dark=theme.DARK,
+                legend=self._legend.isChecked()))
             self._caption.setText("No track matches these filters.")
             self._quad_dirty = self._emb_dirty = True
             return
@@ -592,13 +603,15 @@ class MapPage(QWidget):
         coords = self._lib.store.coords[:self._lib.placed]
         self._map.set_figure(build_figure(drawn, self._top, coords,
                                           playlist=[], seed=None, dark=theme.DARK,
-                                          labels=self._labels.isChecked()))
+                                          labels=self._labels.isChecked(),
+                                          legend=self._legend.isChecked()))
         self._map.set_overlays(overlay_figure(coords, marks, dark=theme.DARK))
         self._refresh_caption()
 
         if self._views.currentWidget() is self._quad:
             self._quad.set_cloud(drawn, self._top, frame, visible,
-                                 labels=self._labels.isChecked())
+                                 labels=self._labels.isChecked(),
+                                 legend=self._legend.isChecked())
             self._quad.update_overlays(marks)
             self._quad_dirty = False
         else:
@@ -779,7 +792,8 @@ class MapPage(QWidget):
         if self._views.currentWidget() is self._quad and self._quad_dirty:
             self._quad.set_cloud(self._drawn, self._top, self._lib.frame,
                                  self._visible,
-                                 labels=self._labels.isChecked())
+                                 labels=self._labels.isChecked(),
+                                 legend=self._legend.isChecked())
             self._quad.update_overlays(self._marks())
             self._quad_dirty = False
         if self._views.currentWidget() is self._emb and self._emb_dirty:

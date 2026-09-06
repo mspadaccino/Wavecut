@@ -301,6 +301,7 @@ def build_figure(drawn: pd.DataFrame, top_genres: list[str], coords,
                  guides: tuple[float | None, float | None] | None = None,
                  dark: bool = False,
                  labels: bool = True,
+                 legend: bool = True,
                  ) -> go.Figure:
     """La mappa: un tracciato per genere, più il percorso e il seme sopra.
 
@@ -513,7 +514,11 @@ def build_figure(drawn: pd.DataFrame, top_genres: list[str], coords,
         # clic sul singolo punto (`clickmode` torna a "event"): si potrebbe
         # disegnare ma non scegliere un brano. Lo strumento lazo resta nella
         # barra del grafico, a un clic di distanza.
-        showlegend=True, hovermode="closest",
+        # La legenda si può spegnere: sono i nomi dei generi in fondo al
+        # disegno, e su uno schermo basso quella riga è mappa in meno.
+        # Spenta, si perde il clic che accende e spegne un genere — per
+        # questo è una scelta e non una misura automatica.
+        showlegend=legend, hovermode="closest",
         hoverlabel={"align": "left", "font": {"size": 11}},
         # Sotto al disegno quando sotto non c'è nient'altro, sopra quando
         # gli assi hanno un nome: là sotto ci stanno già i numeri della scala
