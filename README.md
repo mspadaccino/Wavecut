@@ -1056,31 +1056,6 @@ that were already processed; `--no-cache` forces re-analysis.
 | `energy_cli.py` | measures the four energy fields — re-reads the audio, resumable |
 | `mood_cli.py` | re-scores valence from the stored embeddings: no audio, minutes instead of hours |
 | `zoo_cli.py` | tries the model zoo's other Discogs-EffNet heads (aggressive, relaxed, party, danceability) — reports only, writes nothing |
-| `chapters_cli.py` | five playlists, one per chapter of the arc — a hundred tracks each, straight into the shelf |
-
-**A playlist per chapter** — `chapters_cli.py`:
-
-```bash
-# a hundred tracks for each of Intro, Buildup, Tension, Climax, Release
-poetry run python chapters_cli.py
-
-# sixty each, and say what it would write without writing it
-poetry run python chapters_cli.py --size 60 --dry-run
-```
-
-It sifts the whole map chapter by chapter — the same five
-[chapters](#the-board) the Chapter Builder and the Journey read, so a track
-this puts in Tension is one they would put there too — and writes the five
-playlists into the shelf, numbered (`1 Intro`, `2 Buildup`, …) so they sit
-in the order of the night. They are in the **Shelf** tab next time the app
-opens: not a set already written, but the material to play one from.
-
-A track goes into one chapter only, and the chapters pick in turn rather
-than in order, or Release would be made of Intro's leftovers. Inside a
-chapter the order is the magic sort, and each chapter starts on the track
-that mixes best out of the last one of the previous. A track missing any of
-tempo, energy, valence or groove is not picked: the four are what a chapter
-is read on, and the CLI says how many tracks carry all four.
 
 ---
 
@@ -1283,7 +1258,6 @@ Key engine modules (`core/analysis/`):
 | `mixing.py` | Camelot wheel, transition cost (cosine on the embeddings + tempo + key), the point one step ahead for Trend, signed tempo/key shifts, path-drawn playlists, magic sort |
 | `graph_playlist.py` | the chain as a graph: tracks, links, layout on the board, the roster of what comes next, and Auto chain |
 | `arc.py` | the shape of a set: the five chapters with their shares and bands, read by the Chapter Builder and by the Journey |
-| `chapter_sets.py` | one playlist per chapter, sifted out of the whole library: the arc read on the library's own ranks, a track to one chapter only |
 | `journey.py` | the Journey: from a track to another in N steps — a corridor between the ends, Viterbi over the positions with the arc, no repeats |
 | `radio.py` | Radio Mix: a playlist from a group — split into souls, maximal marginal relevance, drift, negatives |
 | `journal.py` | `choices.jsonl`: one line per choice made in Build a set, for learning later |
