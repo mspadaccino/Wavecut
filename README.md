@@ -501,13 +501,14 @@ an even sample of everything that passes, spread across the years. The list
 comes out magic-sorted. Tick what you want, then **Add** it to the playlist
 or **Save** it to the shelf as a playlist named after the phrase.
 
-**Years are the one thing to prepare.** No model measures them; a track has
-to tell you. **⚙️ Map settings ▸ Read years from tags** reads the original
-date, then the release date, from each file's tags, and failing those a
-year in brackets in the file or folder name — *(1983)*, *[1985]*, *1983 -
+**Years come from the track, not from a model.** When a track goes on the
+map, its year is read with its title and artist: the original date, then
+the release date, from the file's tags, and failing those a year in
+brackets in the file or folder name — *(1983)*, *[1985]*, *1983 -
 Thriller/*. A bare four-digit number in a title is left alone: *Disco 2000*
-is a title. A filter on years keeps only tracks that carry one, and the
-tab says how many were left out for not having it.
+is a title. A filter on years keeps only tracks that carry one, and the tab
+says how many were left out for not having it. A map built before years
+were read is completed from the terminal with `map_cli.py --years`, once.
 
 ### The tools, side by side
 
@@ -756,6 +757,11 @@ poetry run python map_cli.py --project-only
 # the library moved to another disk: update the paths instead of
 # re-analyzing 90,000 tracks from scratch
 poetry run python map_cli.py --relocate "/Volumes/Old/DJSet" "/Volumes/New/DJSet"
+
+# a map built by an older version: read title and artist, or the year, from
+# the tags onto the rows that lack them — milliseconds a track, no audio
+poetry run python map_cli.py --titles
+poetry run python map_cli.py --years
 ```
 
 `--relocate` rewrites the paths and leaves the embeddings and the projection

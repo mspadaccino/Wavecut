@@ -30,7 +30,7 @@ from pathlib import Path
 
 import numpy as np
 
-from core.analysis import energy, mood_scale, titles
+from core.analysis import energy, mood_scale, titles, years
 from core.analysis.essentia_tags import available, missing_models
 from core.analysis.map_job import DEFAULT_MAP_STATE_FILE, run_job
 from core.analysis.map_profile import ProfileSettings, default_workers
@@ -180,6 +180,9 @@ def main() -> None:
     parser.add_argument("--titles", action="store_true",
                         help="Legge titolo e artista dai tag sulle righe che "
                              "non li hanno, senza rifare l'analisi")
+    parser.add_argument("--years", action="store_true",
+                        help="Legge l'anno dai tag, o dal nome del file, "
+                             "sulle righe che non lo hanno")
     args = parser.parse_args()
 
     if args.fields:
@@ -193,6 +196,17 @@ def main() -> None:
         done = titles.backfill(store, on_progress=lambda n, of: (
             sys.stdout.write(f"\r  {n:,}/{of:,}"), sys.stdout.flush()))
         print(f"\nScritte {done:,}."
+              + (f" Ne restano {todo - done:,}: file non raggiungibili."
+                 if todo - done else ""))
+        return
+
+    if args.years:
+        store = MapStore.load(args.store)
+        todo = len(years.missing(store.rows))
+        print(f"Righe senza anno: {todo:,} su {len(store):,}")
+        done = years.backfill(store, on_progress=lambda n, of: (
+            sys.stdout.write(f"\r  {n:,}/{of:,}"), sys.stdout.flush()))
+        print(f"\nScritte {done:,}: {years.known(store.rows):,} portano un anno."
               + (f" Ne restano {todo - done:,}: file non raggiungibili."
                  if todo - done else ""))
         return

@@ -33,7 +33,6 @@ from core.analysis.map_projection import available as umap_available
 from core.analysis.map_projection import project
 from core.analysis.map_profile import default_workers
 from core.analysis.map_store import MapStore
-from core.analysis import titles, years
 from core.bundle import child_command, child_cwd
 from qt_app import theme
 from qt_app.pages.common import spelled
@@ -167,41 +166,6 @@ class SettingsDialog(QDialog):
         missing_row.addWidget(self._missing_told, stretch=1)
         missing_row.addWidget(self._prune)
 
-        # --- titolo e artista dai tag ---
-        self._titles_told = _dim("")
-        self._titles = QPushButton("🏷 Read titles from tags")
-        self._titles.setEnabled(False)
-        self._titles.setToolTip(theme.hint(
-            "Tracks analyzed before the map read tags carry only their file "
-            "name, and in a library ripped from compilations that is "
-            "\"Track 08\". This reads title and artist from each file's "
-            "tags and writes them next to the name — a few milliseconds a "
-            "track, no audio analysis. Tables and the hint over a point "
-            "show them. Files that are not reachable are left for next "
-            "time."))
-        self._titles.clicked.connect(self._on_titles)
-        self._titling = False
-        titles_row = QHBoxLayout()
-        titles_row.addWidget(self._titles_told, stretch=1)
-        titles_row.addWidget(self._titles)
-
-        # --- l'anno, dai tag o dal nome ---
-        self._years_told = _dim("")
-        self._years = QPushButton("📅 Read years from tags")
-        self._years.setEnabled(False)
-        self._years.setToolTip(theme.hint(
-            "The year of each track, from its tags (the original date "
-            "first, then the release date) or, failing those, from a year "
-            "in brackets in the file or folder name. Nothing is measured: "
-            "the year is the one thing a track has to tell you. Describe "
-            "needs it — \"80s\" is a range of years — and it shows on the "
-            "hint over a point. Unreachable files are left for next time."))
-        self._years.clicked.connect(self._on_years)
-        self._dating = False
-        years_row = QHBoxLayout()
-        years_row.addWidget(self._years_told, stretch=1)
-        years_row.addWidget(self._years)
-
         # --- il job ---
         self._bar = QProgressBar()
         self._bar.setTextVisible(False)
@@ -244,8 +208,6 @@ class SettingsDialog(QDialog):
         box.addLayout(workers_row)
         box.addWidget(self._launch)
         box.addLayout(missing_row)
-        box.addLayout(titles_row)
-        box.addLayout(years_row)
         box.addSpacing(10)
         box.addWidget(self._bar)
         box.addWidget(self._job_told)
@@ -285,8 +247,6 @@ class SettingsDialog(QDialog):
                                  and not self._projecting)
         self._refresh_queue()
         self._check_missing()
-        self._refresh_titles()
-        self._refresh_years()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -474,91 +434,6 @@ class SettingsDialog(QDialog):
             f"Removed {count:,}. The tracks that stay keep their place, so "
             "there is no need to recompute the projection.")
         self.library_changed.emit()
-
-    # ------------------------------------------------------------------
-    # titolo e artista dai tag
-    # ------------------------------------------------------------------
-    def _refresh_titles(self) -> None:
-        if self._store is None or self._titling:
-            return
-        untitled = len(titles.missing(self._store.rows))
-        self._titles.setEnabled(untitled > 0)
-        self._titles_told.setText(
-            f"<b>{untitled:,} track(s)</b> on the map have not had their "
-            "tags read: no title, no artist, only the file name."
-            if untitled else
-            "Every track on the map has had its tags read.")
-
-    def _on_titles(self) -> None:
-        store = self._store
-        if store is None or self._titling:
-            return
-        self._titling = True
-        self._titles.setEnabled(False)
-        self._titles_told.setText(
-            f"Reading the tags of {len(titles.missing(store.rows)):,} "
-            "track(s)…")
-        run_in_pool(lambda: titles.backfill(store),
-                    self._on_titled, self._on_titles_failed)
-
-    def _on_titled(self, count: int) -> None:
-        self._titling = False
-        self._refresh_titles()
-        left = len(titles.missing(self._store.rows)) if self._store else 0
-        self._titles_told.setText(
-            f"Read the tags of {count:,} track(s)."
-            + (f" {left:,} were not reachable — is the disk mounted? — "
-               "and stay for next time." if left else ""))
-        self.library_changed.emit()
-
-    def _on_titles_failed(self, trouble: Exception) -> None:
-        self._titling = False
-        self._titles_told.setText(f"Could not read the tags: {trouble}")
-        self._titles.setEnabled(True)
-
-    # ------------------------------------------------------------------
-    # l'anno
-    # ------------------------------------------------------------------
-    def _refresh_years(self) -> None:
-        if self._store is None or self._dating:
-            return
-        rows = self._store.rows
-        undated = len(years.missing(rows))
-        self._years.setEnabled(undated > 0)
-        self._years_told.setText(
-            f"<b>{undated:,} track(s)</b> on the map have not had their year "
-            "read."
-            if undated else
-            f"Every track has had its year read: <b>{years.known(rows):,}</b> "
-            f"of {len(rows):,} carry one.")
-
-    def _on_years(self) -> None:
-        store = self._store
-        if store is None or self._dating:
-            return
-        self._dating = True
-        self._years.setEnabled(False)
-        self._years_told.setText(
-            f"Reading the year of {len(years.missing(store.rows)):,} "
-            "track(s)…")
-        run_in_pool(lambda: years.backfill(store),
-                    self._on_dated, self._on_years_failed)
-
-    def _on_dated(self, count: int) -> None:
-        self._dating = False
-        self._refresh_years()
-        left = len(years.missing(self._store.rows)) if self._store else 0
-        self._years_told.setText(
-            f"Read the year of {count:,} track(s): "
-            f"{years.known(self._store.rows):,} carry one."
-            + (f" {left:,} were not reachable — is the disk mounted? — "
-               "and stay for next time." if left else ""))
-        self.library_changed.emit()
-
-    def _on_years_failed(self, trouble: Exception) -> None:
-        self._dating = False
-        self._years_told.setText(f"Could not read the years: {trouble}")
-        self._years.setEnabled(True)
 
     # ------------------------------------------------------------------
     # il monitor

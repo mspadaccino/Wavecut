@@ -293,12 +293,14 @@ class DescribePanel(QWidget):
         self._years_hint.setText(
             f"{dated:,} of {len(frame):,} tracks carry a year"
             + ("" if dated == len(frame) else
-               " — read the rest in ⚙️ Map settings"))
+               " — the others have none in their tags or their name"))
         self._years_hint.setToolTip(theme.hint(
             "A filter on years keeps only tracks that carry one: a track "
             "without a year is not an 80s track, it is an unknown one. "
-            "Years come from the tags or from a year in brackets in the "
-            "file name — ⚙️ Map settings reads them."))
+            "Years are read when a track goes on the map, from its tags or "
+            "from a year in brackets in the file or folder name. A map "
+            "built before years were read is completed from the terminal: "
+            "<code>map_cli.py --years</code>."))
 
     # ------------------------------------------------------------------
     # chi legge

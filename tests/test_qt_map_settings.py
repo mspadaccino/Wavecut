@@ -69,32 +69,3 @@ def test_nothing_is_checked_when_the_folder_is_not_reachable(qtbot, tmp_path):
     assert not dialog._prune.isEnabled()
     assert "not reachable" in dialog._missing_told.text()
     assert len(store) == 2
-
-
-def test_the_tags_are_read_on_request_and_the_page_is_told(qtbot, tmp_path):
-    from qt_app.pages.map.settings import SettingsDialog
-    from tests.test_titles import tagged_mp3
-
-    lib = tmp_path / "lib"
-    lib.mkdir()
-    home = tagged_mp3(lib / "Track 08.mp3", "Home", "Julie McKnight")
-    store = MapStore.load(tmp_path / "map")
-    store.append([_profile(home, 1.0)])
-    del store.rows[0]["title"], store.rows[0]["artist"]
-    store.rewrite()
-
-    dialog = SettingsDialog()
-    qtbot.addWidget(dialog)
-    dialog._folder = lib
-    dialog.set_store(store)
-    assert dialog._titles.isEnabled()
-    assert "1 track(s)" in dialog._titles_told.text()
-
-    heard = []
-    dialog.library_changed.connect(lambda: heard.append(True))
-    dialog._on_titles()
-    qtbot.waitUntil(lambda: bool(heard))
-    assert store.rows[0]["title"] == "Home"
-    assert store.rows[0]["artist"] == "Julie McKnight"
-    assert not dialog._titles.isEnabled()
-    assert "Read the tags of 1" in dialog._titles_told.text()
