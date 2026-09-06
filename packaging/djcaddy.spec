@@ -106,8 +106,11 @@ for tool in ("ffmpeg", "ffprobe"):
 # moduli, e pytest appresso).
 
 hiddenimports = ["map_cli", "tag_cli"]
+# `keyring` trova i suoi backend (Keychain, Credential Manager) per entry
+# point, e `anthropic` porta i suoi modelli pydantic: senza collect_all il
+# bundle li perde in silenzio e Describe legge solo a regole.
 for package in ("plotly", "essentia", "demucs", "umap", "pynndescent",
-                "pyrekordbox"):
+                "pyrekordbox", "keyring", "anthropic"):
     try:
         found_datas, found_binaries, found_hidden = collect_all(package)
     except Exception:

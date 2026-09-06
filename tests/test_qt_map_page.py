@@ -27,6 +27,6 @@ def test_the_map_page_builds_with_every_tab(qtbot, tmp_path, monkeypatch):
     page = MapPage(AppState())
     qtbot.addWidget(page)
     tabs = [page._panels.tabText(i) for i in range(page._panels.count())]
-    assert tabs == ["🔎 Filters", "🎛️ Build a set", "🎵 Playlist",
-                    "📚 Shelf", "★ Favourites"]
+    assert tabs == ["🔎 Filters", "🎛️ Build a set", "💬 Describe",
+                    "🎵 Playlist", "📚 Shelf", "★ Favourites"]
     assert (tmp_path / "Playlists" / "Playlist.m3u8").exists()

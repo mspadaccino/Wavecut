@@ -42,6 +42,7 @@ from qt_app.widgets.plotly_view import PlotlyView
 from qt_app.widgets.track_table import TrackTable, track_frame
 from qt_app.workers import run_in_pool
 
+from .describe_panel import DescribePanel
 from .embeddings import EmbeddingPane
 from .favourites_panel import FavouritesPanel
 from .filters import FiltersPanel
@@ -391,6 +392,11 @@ class MapPage(QWidget):
         self._playlist.shelf_changed.connect(lambda _: self._retitle_panels())
         self._favourites = FavouritesPanel(self._state, self._wire)
         self._favourites.append_playlist.connect(self._on_builder_append)
+        # Describe: una frase, la lettura da correggere, la lista. Scrive
+        # sullo scaffale della Playlist, per nome, e la porta sul tavolo.
+        self._describe = DescribePanel(self._wire, shelf=self._playlist.shelf)
+        self._describe.append_playlist.connect(self._on_builder_append)
+        self._describe.shelve_playlist.connect(self._on_describe_shelved)
         # La vista dello scaffale legge gli stessi file della scheda
         # Playlist e si rifà quando quella scrive o cambia nome.
         self._shelf_view = ShelfPanel(self._playlist.shelf)
@@ -403,6 +409,7 @@ class MapPage(QWidget):
         self._panels = QTabWidget()
         self._panels.addTab(self._filters, "🔎 Filters")
         self._panels.addTab(self._builder, "🎛️ Build a set")
+        self._panels.addTab(self._describe, "💬 Describe")
         self._panels.addTab(self._playlist, PLAYLIST_TAB_TITLE)
         self._panels.addTab(self._shelf_view, "📚 Shelf")
         self._panels.addTab(self._favourites, FAVOURITES_TAB_TITLE)
@@ -523,6 +530,7 @@ class MapPage(QWidget):
         self._builder.set_library(lib)
         self._playlist.set_library(lib)
         self._favourites.set_library(lib)
+        self._describe.set_library(lib)
         self._shelf_view.set_library(lib)
         self._rebuild_cloud()
         self._schedule_choice()
@@ -767,6 +775,18 @@ class MapPage(QWidget):
     def _on_open_playlist(self, name: str) -> None:
         """Dalla vista dello scaffale alla playlist: sul tavolo, e davanti."""
         self._playlist.open(name)
+        self._panels.setCurrentWidget(self._playlist)
+
+    def _on_describe_shelved(self, name: str, indices: list[int]) -> None:
+        """La lista di Describe sullo scaffale col nome della frase, e sul
+        tavolo. Se quel nome È la playlist sul tavolo, si riscrive lei."""
+        if name == self._playlist.current_name():
+            self._playlist.replace(indices)
+        else:
+            frame = self._lib.frame
+            self._playlist.shelf.write(
+                name, [str(frame.at[i, "path"]) for i in indices])
+            self._playlist.open(name)
         self._panels.setCurrentWidget(self._playlist)
 
     def _on_weights(self) -> None:

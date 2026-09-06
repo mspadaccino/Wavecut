@@ -67,13 +67,14 @@ nothing installed.
 poetry install
 ```
 
-That installs everything. The two optional groups are exits, not choices you
+That installs everything. The optional groups are exits, not choices you
 have to make up front:
 
 | group | drop it with | what you lose |
 |---|---|---|
 | `essentia` | `--without essentia` | map building and tagging — use this if there is no wheel for your Python, and the rest stays alive |
 | `rekordbox` | `--without rekordbox` | writing cues into rekordbox's database; the Cue Finder page says so instead of breaking |
+| `describe` | `--without describe` | reading a Describe phrase with Claude, and the keychain for your API key; the phrase is still read by the rules |
 
 The Essentia models are a separate download, and you need them before the map
 or the tagging can run. They belong in `~/essentia_models`.
@@ -457,6 +458,57 @@ it yet. It is the raw material for two things the app cannot do without
 data: learning the three weights from what you actually pick, and learning
 *what usually comes next* from the sets you build.
 
+### Describe: a playlist from a phrase
+
+The **💬 Describe** tab starts from words. Type what you would say to
+another DJ — *synth pop anni 80, solo versioni extended*, *90s eurodance
+floor fillers*, *ballads remixes* — or pick one of the ready-made
+collections in the menu (70s, 80s, 90s, Flash House, Ballads Remixes, New
+Wave / Synth Pop, ReVibes, Rock, Italo House, Eurodance), and press
+**Read**.
+
+Reading is the whole trick, and it happens **before** any search. The
+phrase becomes a form — years, genres, moods, tempo, words the title must
+carry, minimum length — and the form is shown in fields you can correct:
+*1980–1989 · Synth-pop, New Wave · title has extended*. A wrong reading is
+fixed there, not discovered on the dancefloor. Genres and moods can only be
+labels your library actually carries, in the spelling the models wrote:
+nothing is invented.
+
+Two readers, same form. **The rules** are always there, no key, no network:
+they know the decades in Italian and English, the label names however you
+spell them (*synthpop*, *synth-pop*, *Synth Pop*), the macro genres (*rock*
+takes every Rock label), and the words of the trade — *ballad*, *extended*,
+*12 inch*, *rework*, *flash house*, *eurodance*, *revibes*. That list lives
+in `core/analysis/describe_lexicon.py` and is meant to grow with your own
+words. **Claude** reads the phrase with your own Anthropic API key, entered
+once under **🔑** and kept in the system keychain: it understands phrasing
+the rules do not, and it costs about a cent a phrase on your credit. What
+leaves the machine is the phrase and the list of label names your library
+uses — never a track, a title or a file name. Every reading is remembered,
+so the same phrase is never paid twice; and when the network is down, the
+key is wrong or the credit is gone, the rules take over and one line says
+so. No dialog, no feature that vanishes.
+
+**Search** then runs here, on the map. The hard filters — years, tempo,
+length, title words — decide who can enter. The labels decide who enters
+first: tracks carrying them are the seeds, strongest first, and the
+[Radio Mix](#radio-mix-a-playlist-from-a-group) fills up to the count with
+what *sounds* like them, staying inside the filters — so a *synth pop* takes
+the track that sounds synth pop but was labelled new wave, and an *80s*
+stays an 80s. Without labels there is no taste to follow, and the list is
+an even sample of everything that passes, spread across the years. The list
+comes out magic-sorted. Tick what you want, then **Add** it to the playlist
+or **Save** it to the shelf as a playlist named after the phrase.
+
+**Years are the one thing to prepare.** No model measures them; a track has
+to tell you. **⚙️ Map settings ▸ Read years from tags** reads the original
+date, then the release date, from each file's tags, and failing those a
+year in brackets in the file or folder name — *(1983)*, *[1985]*, *1983 -
+Thriller/*. A bare four-digit number in a title is left alone: *Disco 2000*
+is a title. A filter on years keeps only tracks that carry one, and the
+tab says how many were left out for not having it.
+
 ### The tools, side by side
 
 They all read the same three numbers per track — the fingerprint, the BPM,
@@ -471,6 +523,7 @@ differently.
 | **Journey** | a start, and an end if you know it | `D` along the row, plus the arc at each position | the cheapest row of N on a corridor between the ends, no track twice | a set from here to there, in order |
 | **Magic sort** | a group you already have | `D` between every pair | nearest-neighbour path, then 2-opt | the same tracks, reordered |
 | **Radio Mix** | a group (favourites, selection or playlist) | sound only, against the group's centre | one at a time, each pick penalised for resembling the ones before | a set that covers the group without repeating — then magic-sorted |
+| **Describe** | a phrase | years, tempo, length, title words as filters; labels as seeds; then Radio Mix on the fingerprint | reads the phrase into a form you correct, then searches the map | up to N tracks, seeds first, magic-sorted — named after the phrase on the shelf |
 
 **What magic sort minimises.** The sum of `D` along the row: `D(1st,2nd) +
 D(2nd,3rd) + …`. Not the distance from a seed, not an average — only
@@ -1258,6 +1311,11 @@ Key engine modules (`core/analysis/`):
 | `mixing.py` | Camelot wheel, transition cost (cosine on the embeddings + tempo + key), the point one step ahead for Trend, signed tempo/key shifts, path-drawn playlists, magic sort |
 | `graph_playlist.py` | the chain as a graph: tracks, links, layout on the board, the roster of what comes next, and Auto chain |
 | `arc.py` | the shape of a set: the five chapters with their shares and bands, read by the Chapter Builder and by the Journey |
+| `describe.py` | Describe: the `Query` form, the library's label vocabulary, and the search — hard filters, labelled seeds, Radio Mix fill |
+| `describe_lexicon.py` | the rules reader: decades in two languages, label names however spelled, macro genres, the words of the trade (`ALIASES`) |
+| `describe_llm.py` | the Claude reader: the phrase plus the label vocabulary go out, the form comes back (structured output), readings remembered on disk |
+| `api_keys.py` | the user's API key: environment, system keychain, or a private file |
+| `years.py` | the year of a track from its tags or from a bracketed year in its name, and the backfill onto the map |
 | `journey.py` | the Journey: from a track to another in N steps — a corridor between the ends, Viterbi over the positions with the arc, no repeats |
 | `radio.py` | Radio Mix: a playlist from a group — split into souls, maximal marginal relevance, drift, negatives |
 | `journal.py` | `choices.jsonl`: one line per choice made in Build a set, for learning later |
