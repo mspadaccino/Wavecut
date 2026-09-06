@@ -131,9 +131,9 @@ Three ways, and they answer different questions:
   sort**, or **draw a lasso** across the clusters to plan an arc.
 - *What comes next?* Go to **Build a set** and grow the chain one track at a
   time from the ranked candidates.
-- *How do I get from here to there?* Pick a start and, if you know it, the
-  track to land on, and let **Journey** find the run of tracks in between
-  that follows the arc of a set.
+- *How do I get from here to there?* Start the chain and, if you know it,
+  name the track to land on, and let **Auto chain** plan the run of tracks
+  in between that follows the arc of a set.
 - *More like these.* Star some favourites, or select a group, and let
   **Radio Mix** tune a playlist from the whole group's taste.
 
@@ -184,8 +184,8 @@ I play next, out of ninety thousand tracks?*
   that visits every track once — an open travelling-salesman problem, solved
   nearest-neighbour then 2-opt — so each track melts into the next.
 - **Grow a set one track at a time** in [Build a set](#building-a-set).
-- **Go from one track to another in N steps** with the
-  [Journey](#journey-from-here-to-there-in-n-steps).
+- **Go from one track to another in N steps** with *Auto chain* and a
+  track to land on, in [Build a set](#building-a-set).
 - **Tune a playlist from a group** — your favourites, or a lasso — with
   [Radio Mix](#radio-mix-a-playlist-from-a-group).
 - **Export** the result as M3U8 or rekordbox XML.
@@ -315,7 +315,7 @@ own*, not a number on an absolute scale, which is exactly the language a
 set is planned in — an intro lives low, a climax high.
 
 **Chapter** is the menu beside the presets: Intro, Buildup, Tension,
-Climax, Release — the same five the [Journey](#journey-from-here-to-there-in-n-steps)
+Climax, Release — the same five [Auto chain](#building-a-set)
 and the Chapter Builder read. Pick one and the four ranges take that
 chapter's bands, percentiles of your library turned into this library's
 numbers: *Intro* puts BPM in your slowest 15%, energy in the calmest
@@ -378,51 +378,44 @@ tempo — and proposes what lies there: a set that has been rising keeps
 rising. At 1 the step is as long as the last one; on the first track of a
 chain there is no line yet, and Trend does nothing.
 
-**Auto chain: the chain grows on its own.** Press it and the top of the
-roster is taken, becomes the source, the roster is made again, and so on
-for as many steps as the number beside the button. It is exactly what you
-would do by hand always taking the first candidate: same cost, same
-weights, same rule on copies, and Trend counts. It starts from the track in
-*Branch from*, so you can grow a branch off the middle. The steps go into
-the journal as `auto_chain`, not as picks — the machine taking the first
-row is not a choice of yours, and must not teach anything that the first
-row is always right.
+**Auto chain: the chain grows on its own.** Press it and the next N
+tracks are planned in one go and attached to the chain after the track in
+*Branch from*, so you can grow a branch off the middle. It is not the
+roster taken N times: the run is planned **as a whole** — the cheapest row
+of N transitions through the tracks that pass the filters, so the fifth
+track is chosen knowing the first — with the same cost, the same weights
+and the same rule on copies as picking by hand. The run goes into the
+journal as `auto_chain`, not as picks — a row the machine planned is not a
+choice of yours, and must not teach anything about which row is right.
 
-### Journey: from here to there in N steps
+**Land on: where the run should end, if you know it.** *I want to open
+with this and close with that — what are the twelve tracks in between?*
+Pick the track to land on from the **Pick ▾** menu — the seed on the map, a
+file from the Finder, or a name — and the run ends there, N tracks later.
+Leave it open and the run finishes wherever the cheapest transitions lead.
+Once reached, the landing track is the last of the chain and the field
+opens again, so a set in legs comes for free: the opener, then the track
+you want in the middle, then the closer.
 
-The chain grows forward without knowing where it should end. The Journey
-answers the question the chain cannot: *I want to open with this and close
-with that — what are the twelve tracks in between?*
-
-**A start, an end, a length.** The start is the seed, or the last track of
-the chain or of the playlist, from the *From* menu. The end is optional:
-pick it by name, or leave it open and the set finishes wherever the
-cheapest run of transitions leads. *Tracks* is how many, the two ends
-included.
-
-**What it minimises.** The sum of the transition cost `D` along the row —
-the same cost, the same three sliders as everything else on the page — plus,
-when the **Arc** knob is up, how far each track sits from the chapter its
-position belongs to. The arc is the one the [Chapter Builder](#the-board)
-uses: Intro, Buildup, Tension, Climax, Release, each with a share of the
-set and a band of tempo, energy, mood and groove on the scale of your
-library. At Arc 0 the Journey is the smoothest run of transitions and
-nothing else; at 1 the shape of the set weighs as much as a transition.
+**Arc: the shape of a set.** What the run minimises is the sum of the
+transition cost `D` along the row — the same cost, the same three sliders
+as everything else on the page — plus, when the **Arc** knob is up, how far
+each track sits from the chapter its position belongs to. The arc is the
+one the [Chapter Builder](#the-board) uses: Intro, Buildup, Tension,
+Climax, Release, each with a share of the run and a band of tempo, energy,
+mood and groove on the scale of your library. At Arc 0 the run is the
+smoothest row of transitions and nothing else; at 1 the shape weighs as
+much as a transition. The arc spans the run, not the whole chain.
 
 **How it searches.** Not the whole library: a corridor of the few hundred
-tracks that pass the filters and cost least to reach from both ends — the
-ones that are *on the way*. On that corridor the best row is found exactly,
-one layer per position, and then straightened: a run that goes out and
-comes back on the same track keeps the way out and finds something else for
-the way back. No track twice, near-identical twins never back to back,
-copies of the same song once. With the arc on, the row carries a `chapter`
-column that says which part of the set each position stands for.
-
-**A draft, not a verdict.** The row comes out ticked, in order. Untick what
-does not convince you, send the rest to the playlist, and reorder by hand;
-magic sort on the playlist keeps the first track where it is. If the filters
-leave too few tracks on the way, the Journey says so and gives what it could
-join.
+tracks that pass the filters and cost least to reach from the start — and
+from the landing track, when there is one — the ones that are *on the
+way*. On that corridor the best row is found exactly, one layer per
+position, and then straightened: a run that goes out and comes back on the
+same track keeps the way out and finds something else for the way back. No
+track twice, nothing that is already on the chain, near-identical twins
+never back to back, copies of the same song once. If the filters leave too
+few tracks on the way, the run is as long as it can be.
 
 ### Radio Mix: a playlist from a group
 
@@ -560,8 +553,7 @@ differently.
 |---|---|---|---|---|
 | **Quick List** | one seed | the cost `D` (sound + BPM + key) | ranks every track against the seed, once | a ranking of options — they may sound alike |
 | **Chain Maker** | the last track of the chain | `D` from that track (or one step ahead, with Trend) | you take one of nine, and the roster is made again | a chain in the order you built it |
-| **Auto chain** | the last track of the chain | the same | takes the top of the roster, N times | a chain in the order it chose |
-| **Journey** | a start, and an end if you know it | `D` along the row, plus the arc at each position | the cheapest row of N on a corridor between the ends, no track twice | a set from here to there, in order |
+| **Auto chain** | the last track of the chain, and a track to land on if you know it | `D` along the row, plus the arc at each position | the cheapest row of N on a corridor between the ends, no track twice | a run from here to there, attached to the chain |
 | **Magic sort** | a group you already have | `D` between every pair | nearest-neighbour path, then 2-opt | the same tracks, reordered |
 | **Radio Mix** | a group (favourites, selection or playlist) | sound only, against the group's centre | one at a time, each pick penalised for resembling the ones before | a set that covers the group without repeating — then magic-sorted |
 | **Describe** | a phrase | years, tempo, length, title words as filters; labels as seeds; then Radio Mix on the fingerprint | reads the phrase into a form you correct, then searches the map | up to N tracks, seeds first, magic-sorted — named after the phrase on the shelf |
@@ -575,7 +567,7 @@ whether a step goes up or down in tempo, only how big the step is. The
 direction shows in the `Δbpm` and `Δkey` columns and never enters the
 order. The weights are the three sliders of the **Transition cost** row
 above the right-hand tabs, and there is only one set of them: Quick List,
-the chain, the Journey, Radio Mix's final order, and the playlist's own
+the chain and Auto chain, Radio Mix's final order, and the playlist's own
 magic sort and *from previous* column all read the same three. They sit
 outside every tab because they govern two of them.
 
@@ -601,9 +593,10 @@ sort at the end.
 
 **Is Radio Mix an automatic chain?** Only in one corner: with Drift at 1 and
 Variety at 0 the taste *is* the last pick and each track is found next to
-the previous one, which is what Auto chain does. Everywhere else they part
-ways. Auto chain chooses with the full cost, tempo and key included, keeps
-the order it chose, and does not mind if the fifth track sounds like the
+the previous one, which is the chain grown by hand always taking the first
+of the roster. Everywhere else they part ways. Auto chain chooses with the
+full cost, tempo and key included, plans the run as a whole and keeps the
+order it chose, and does not mind if the fifth track sounds like the
 first; Radio Mix chooses on sound alone, reorders at the end, and is built
 to keep the fifth unlike the first. If you want *start here and go on by
 yourself, mixably*, that is Auto chain. If you want *twenty tracks that
@@ -612,8 +605,8 @@ stand for this group*, that is Radio Mix.
 ### The shelf
 
 The page works on **one playlist at a time** — the line on the map, the
-board, what the builders add to, what Radio Mix and the Journey start from
-are all that one — and a night takes many: `house_intro`, `house_buildup`,
+board, what the builders add to, what Radio Mix starts from are all that
+one — and a night takes many: `house_intro`, `house_buildup`,
 `funky_climax`. The **shelf** holds the others. The menu at the top of the
 playlist tab says which one is on the table; pick another and it comes on,
 the one before goes back exactly as it was. **＋ New** opens an empty one
@@ -676,10 +669,10 @@ Tension, Climax, Release — by how each track's tempo, energy, mood and
 groove fit each part's band, with a fixed share of the set for each; the
 board shades the parts under the cards, and *Apply chapter order* rewrites
 the playlist in that order. It works on a playlist that exists: it labels
-and reorders, it never adds a track. The [Journey](#journey-from-here-to-there-in-n-steps)
-is the same arc used the other way round — the shape first, then the tracks
-that realise it — and the two read one definition, so a Journey built with
-the arc comes out already in its chapters.
+and reorders, it never adds a track. [Auto chain](#building-a-set) is the
+same arc used the other way round — the shape first, then the tracks that
+realise it — and the two read one definition, so a run planned with the
+arc comes out already in its chapters.
 
 ### Point size, and the running job
 
@@ -1357,14 +1350,14 @@ Key engine modules (`core/analysis/`):
 | `ordering.py` | the plain playlist orders — BPM, energy, key around the wheel — stable, unknowns last |
 | `mixing.py` | Camelot wheel, transition cost (cosine on the embeddings + tempo + key), the point one step ahead for Trend, signed tempo/key shifts, path-drawn playlists, magic sort |
 | `graph_playlist.py` | the chain as a graph: tracks, links, layout on the board, the roster of what comes next, and Auto chain |
-| `arc.py` | the shape of a set: the five chapters with their shares and bands, read by the Chapter Builder and by the Journey |
+| `arc.py` | the shape of a set: the five chapters with their shares and bands, read by the Chapter Builder and by Auto chain |
 | `describe.py` | Describe: the `Query` form, the library's label vocabulary, and the search — hard filters, labelled seeds, Radio Mix fill |
 | `describe_lexicon.py` | the rules reader: decades in two languages, label names however spelled, macro genres, the words of the trade (`ALIASES`) |
 | `describe_llm.py` | the Claude reader: the phrase plus the label vocabulary go out, the form comes back (structured output), readings remembered on disk |
 | `api_keys.py` | the user's API key: environment, system keychain, or a private file |
 | `years.py` | the year of a track from its tags or from a bracketed year in its name, and the backfill onto the map |
 | `year_guess.py` | the year Claude estimates for the undated tracks: batch requests, answers back onto the rows by path, the lot remembered on disk |
-| `journey.py` | the Journey: from a track to another in N steps — a corridor between the ends, Viterbi over the positions with the arc, no repeats |
+| `journey.py` | the planner behind Auto chain: from a track to another in N steps — a corridor between the ends, Viterbi over the positions with the arc, no repeats |
 | `radio.py` | Radio Mix: a playlist from a group — split into souls, maximal marginal relevance, drift, negatives |
 | `journal.py` | `choices.jsonl`: one line per choice made in Build a set, for learning later |
 | `energy.py` | the four raw energy measures, and the library-wide ranking that turns them into a 1–10 |
