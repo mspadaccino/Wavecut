@@ -25,7 +25,7 @@ fanno parte della stessa domanda. Scegliere un preset rimette tutto.
 
 Accanto, il menu dei capitoli: Intro, Buildup, Tension, Climax, Release.
 Sceglierne uno scrive negli slider le bande di quel capitolo dell'arco
-(`core.analysis.arc`), le stesse che leggono Journey e Chapter Builder —
+(`core.analysis.arc`), le stesse che leggono Auto chain e Chapter Builder —
 tempo, energia, mood, groove, in percentile di libreria tradotto sui numeri
 di QUESTA libreria. È il primo passo di «house_intro»: il capitolo dà le
 fasce, il genere lo metti tu, il preset lo ricorda.
@@ -172,7 +172,7 @@ class FiltersPanel(QWidget):
             self._chapter.addItem(f"{chapter['icon']} {chapter['name']}",
                                   chapter["name"])
         self._chapter.setToolTip(theme.hint(
-            "A chapter of the set — the same five the Journey and the "
+            "A chapter of the set — the same five Auto chain and the "
             "Chapter Builder use. Pick one and the four ranges below take "
             "its bands: tempo, energy, mood and groove, as percentiles of "
             "your library turned into this library's numbers. Genres and "

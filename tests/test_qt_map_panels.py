@@ -250,8 +250,8 @@ def test_unticking_survives_a_knob_touch(qtbot):
 
 
 def test_every_pickable_list_can_be_taken_or_cleared_in_one_gesture(qtbot):
-    """Select all / none sulle quattro tabelle a spunte di Build a set (più
-    il gruppo): le liste arrivano a venti righe, e prenderle tutte non è un
+    """Select all / none sulle tabelle a spunte di Build a set (più il
+    gruppo): le liste arrivano a venti righe, e prenderle tutte non è un
     gesto da fare riga per riga."""
     from PySide6.QtWidgets import QPushButton
 
@@ -268,12 +268,12 @@ def test_every_pickable_list_can_be_taken_or_cleared_in_one_gesture(qtbot):
     panel.set_library(lib)
 
     labels = [b.text() for b in panel.findChildren(QPushButton)]
-    assert labels.count("Select all") == 4      # gruppo, Quick, Journey, Radio
-    assert labels.count("Select none") == 4
+    assert labels.count("Select all") == 3      # gruppo, Quick, Radio
+    assert labels.count("Select none") == 3
 
     panel.set_choice(None, [0, 1, 2], [0, 1, 2])
     for table in (panel._group_table, panel._mixes_table,
-                  panel._journey_table, panel._radio_table):
+                  panel._radio_table):
         table.set_tracks(numbered_rows(frame, [0, 1, 2], common={}))
         table.set_all_picked(True)
         assert len(table.selected_paths()) == 3
@@ -560,7 +560,7 @@ def test_radio_from_the_map_selection_tunes_around_the_group(qtbot, tmp_path,
     # Attorno all'asse x, senza i semi: resta fuori solo la 7, a 150 gradi.
     assert set(panel._radio_shown) == {2, 3, 4, 5, 6}
     assert len(panel._radio_table.selected_paths()) == 5    # tutte spuntate
-    assert panel._tabs.tabText(3).endswith(f"({len(panel._radio_shown)})")
+    assert panel._tabs.tabText(2).endswith(f"({len(panel._radio_shown)})")
 
 
 def test_radio_flag_switches_to_the_favourites(qtbot, tmp_path, monkeypatch):
@@ -638,17 +638,77 @@ def test_chain_trend_looks_ahead_of_the_source(qtbot, tmp_path, monkeypatch):
 
 def test_auto_chain_grows_the_chain_and_is_noted_apart_from_picks(
         qtbot, tmp_path, monkeypatch):
+    """Aperta, la corsa da 0 (0°) in tre è la strada più liscia: 20°, 40°,
+    70°. La fila si attacca alla catena, l'ultimo diventa la sorgente, e
+    nel quaderno va con un nome suo, non come pick."""
     monkeypatch.setattr("qt_app.state._save_favourites", lambda paths: None)
     panel, state, journal = _radio_panel(qtbot, tmp_path)
     panel._on_start_by_name(0)
     panel._auto_steps.setValue(3)
     panel._on_auto_chain()
     walk = panel._walk()
-    assert len(walk) == 4 and walk[0] == "/r/t0.mp3"
+    assert walk == ["/r/t0.mp3", "/r/t1.mp3", "/r/t2.mp3", "/r/t4.mp3"]
     assert panel._source == walk[-1]
     lines = journal.read()
     assert [line["kind"] for line in lines] == ["auto_chain"]
     assert lines[0]["added"] == walk[1:] and lines[0]["steps"] == 3
+    assert lines[0]["end"] is None and lines[0]["arc"] == 0.5
+    # Un'altra corsa non ripropone quello che c'è già.
+    panel._auto_steps.setValue(2)
+    panel._on_auto_chain()
+    assert len(set(panel._walk())) == 6
+
+
+def test_auto_chain_lands_on_the_track_it_was_given(qtbot, tmp_path,
+                                                    monkeypatch):
+    """Da 0 (0°) a 3 (90°) in tre brani in più: la strada dritta passa per
+    2 (40°) e 4 (70°). Arrivati, l'arrivo è l'ultimo della catena e il
+    campo si riapre; un arrivo già in catena si rifiuta."""
+    monkeypatch.setattr("qt_app.state._save_favourites", lambda paths: None)
+    panel, state, journal = _radio_panel(qtbot, tmp_path)
+    panel._on_start_by_name(0)
+    assert "open" in panel._end_told.text() and panel._end_clear.isHidden()
+    panel._on_end_picked(3)
+    assert "t3.mp3" in panel._end_told.text()
+    assert not panel._end_clear.isHidden() and panel._end_search.isHidden()
+    panel._auto_steps.setValue(3)
+    panel._auto_arc.setValue(0.0)
+    panel._on_auto_chain()
+    assert panel._walk() == ["/r/t0.mp3", "/r/t2.mp3", "/r/t4.mp3",
+                             "/r/t3.mp3"]
+    assert panel._chain_end is None and "open" in panel._end_told.text()
+    line = journal.read()[-1]
+    assert line["kind"] == "auto_chain" and line["end"] == "/r/t3.mp3"
+    assert line["arc"] == 0.0 and line["steps"] == 3
+
+    panel._on_end_picked(2)
+    panel._on_auto_chain()
+    assert "already on the chain" in panel._end_told.text()
+    assert len(panel._walk()) == 4
+
+
+def test_the_landing_track_comes_from_the_map_or_from_a_file(
+        qtbot, tmp_path, monkeypatch):
+    monkeypatch.setattr("qt_app.state._save_favourites", lambda paths: None)
+    panel, state, _ = _radio_panel(qtbot, tmp_path)
+    panel._on_start_by_name(0)
+    # Dalla mappa: il seme, se c'è.
+    panel._on_end_from_map()
+    assert "click a track" in panel._end_told.text()
+    panel.set_choice(5, [], [5])
+    panel._on_end_from_map()
+    assert panel._chain_end == 5 and "t5.mp3" in panel._end_told.text()
+    # Da un file: sulla mappa o no.
+    panel._end_from_file("/r/t7.mp3")
+    assert panel._chain_end == 7
+    panel._end_from_file("/elsewhere/t9.mp3")
+    assert panel._chain_end == 7 and "not on the map" in panel._end_told.text()
+    # La ✕ lo riapre; una libreria nuova pure.
+    panel._on_end_clear()
+    assert panel._chain_end is None
+    panel._on_end_picked(6)
+    panel.set_library(_radio_library())
+    assert panel._chain_end is None
 
 
 # --- i pesi: slider, condivisi fino al Magic sort della playlist ---
@@ -754,77 +814,6 @@ def test_the_board_sits_under_the_table_in_the_same_tab(qtbot, tmp_path):
     assert split.isHidden()
     state.set_playlist(["/x/one.mp3", "/x/two.mp3"])
     assert not split.isHidden()
-
-
-# --- il Journey ---
-
-def test_journey_from_the_seed_to_a_track_picked_by_name(qtbot, tmp_path,
-                                                         monkeypatch):
-    """Da 0 (0°) a 3 (90°) in quattro: la strada dritta passa per 2 (40°) e
-    4 (70°). La fila esce spuntata, il conteggio va sulla linguetta, e
-    mandarla alla playlist la scrive nel quaderno con i suoi estremi."""
-    from qt_app.pages.map.set_builder import TAB_JOURNEY
-
-    monkeypatch.setattr("qt_app.state._save_favourites", lambda paths: None)
-    panel, state, journal = _radio_panel(qtbot, tmp_path)
-    panel.set_choice(0, [], [0])
-    assert panel._journey_ask.isEnabled()
-    assert "open" in panel._journey_end_told.text()
-    panel._on_journey_end(3)
-    assert "t3.mp3" in panel._journey_end_told.text()
-    panel._journey_count.setValue(4)
-    panel._journey_arc.setValue(0.0)
-    panel._on_ask_journey()
-    assert panel._journey_shown == [0, 2, 4, 3]
-    assert len(panel._journey_table.selected_paths()) == 4
-    assert panel._tabs.tabText(TAB_JOURNEY).endswith("(4)")
-    assert "chapter" not in panel._journey_table.model_.frame.columns
-
-    # L'arco acceso scrive il capitolo di ogni posizione.
-    panel._journey_arc.setValue(0.5)
-    assert list(panel._journey_table.model_.frame["chapter"]) == \
-        [["Intro"], ["Buildup"], ["Climax"], ["Release"]]
-
-    heard = []
-    panel.replace_playlist.connect(heard.append)
-    panel._send_journey("replace")
-    assert heard == [[0, 2, 4, 3]]
-    line = journal.read()[-1]
-    assert line["kind"] == "journey_sent"
-    assert (line["start"], line["end"]) == ("/r/t0.mp3", "/r/t3.mp3")
-    assert line["count"] == 4 and line["arc"] == 0.5
-
-
-def test_journey_closes_when_the_start_moves_and_can_leave_from_the_chain(
-        qtbot, tmp_path, monkeypatch):
-    monkeypatch.setattr("qt_app.state._save_favourites", lambda paths: None)
-    panel, state, _ = _radio_panel(qtbot, tmp_path)
-    panel.set_choice(0, [], [0])
-    panel._journey_count.setValue(3)
-    panel._on_ask_journey()
-    assert panel._journey_key is not None and panel._journey_ask.isHidden()
-    # Un altro seme: il viaggio di prima parlava di un altro punto.
-    panel.set_choice(1, [], [1])
-    assert panel._journey_key is None and not panel._journey_ask.isHidden()
-    assert panel._journey_shown == []
-
-    # Dalla catena: senza catena non si parte; con la catena, dall'ultimo.
-    panel._journey_from.setCurrentIndex(1)
-    assert not panel._journey_ask.isEnabled()
-    assert "chain is empty" in panel._journey_told.text()
-    panel._on_chain_reorder(["/r/t1.mp3", "/r/t2.mp3"])
-    assert panel._journey_ask.isEnabled()
-    assert "t2.mp3" in panel._journey_told.text()
-    panel._on_ask_journey()
-    assert panel._journey_shown[0] == 2 and len(panel._journey_shown) == 3
-
-    # Dalla playlist: l'ultimo in fila, e la partenza segue la playlist.
-    panel._journey_from.setCurrentIndex(2)
-    assert not panel._journey_ask.isEnabled()
-    assert "playlist is empty" in panel._journey_told.text()
-    state.set_playlist(["/r/t5.mp3", "/r/t3.mp3"])
-    assert "t3.mp3" in panel._journey_told.text()
-    assert panel._journey_ask.isEnabled()
 
 
 def test_radio_from_the_playlist_tunes_around_what_is_in_it(qtbot, tmp_path,

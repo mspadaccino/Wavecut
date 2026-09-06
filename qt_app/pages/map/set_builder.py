@@ -6,7 +6,10 @@ unico di pesi e "quanti elencare", che sono gli stessi filtri di partenza
 per tutte. C'era una quarta scheda, Sounds like it, che rispondeva "cosa
 gli somiglia" sui 1280 numeri dell'embedding: da quando il termine sound
 del costo misura lì e non più sulla mappa, è Quick List coi pesi 1, 0, 0,
-e una scheda che si ottiene girando tre manopole non serve.
+e una scheda che si ottiene girando tre manopole non serve. C'era anche il
+Journey, "da qui a lì in N brani": è diventato l'Auto chain del Chain
+Maker, che pianifica la corsa con lo stesso Viterbi — verso un arrivo se
+lo si nomina, aperta se no — e la attacca alla catena.
 
 Le regole vengono tutte da core: `nearest`, `magic_sort`, `sorted_after`,
 `suggestions`, `chain_table`, `roster_table`, `radio.tune`.
@@ -28,15 +31,15 @@ import numpy as np
 import pandas as pd
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QComboBox, QDoubleSpinBox, QHBoxLayout, QLabel,
-                               QLineEdit, QListWidget, QListWidgetItem,
-                               QPushButton, QSpinBox, QSplitter,
-                               QStackedWidget, QTabWidget, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QComboBox, QDoubleSpinBox, QFileDialog,
+                               QHBoxLayout, QLabel, QLineEdit, QListWidget,
+                               QListWidgetItem, QMenu, QPushButton, QSpinBox,
+                               QSplitter, QStackedWidget, QTabWidget,
+                               QVBoxLayout, QWidget)
 
 from core.analysis import arc, journey, mood_scale, radio
 from core.analysis.duplicates import folded, normalized_name, song_key
-from core.analysis.graph_playlist import GraphPlaylist, auto_chain, suggestions
+from core.analysis.graph_playlist import GraphPlaylist, suggestions
 from core.analysis.journal import Journal, facts
 from core.analysis.mixing import magic_sort, nearest, sorted_after
 from core.viz.board import _label, chain_table, roster_table
@@ -47,7 +50,7 @@ from qt_app.state import AppState
 from qt_app.widgets.track_table import TrackTable
 
 from .library import Library
-from .playlist_panel import double_marks
+from .playlist_panel import AUDIO_FILTER, double_marks
 
 # Quanti candidati proporre, e a passi di quanto: gli stessi numeri della
 # pagina Streamlit, per le stesse ragioni (una lista più lunga di cento non
@@ -81,17 +84,13 @@ WAITING_FOR_THE_BUTTON = ("Nothing built yet — press the button above. The "
 
 # I titoli delle schede, senza conteggio: il conteggio ce lo appende
 # `_retitle` quando c'è qualcosa da contare.
-TAB_TITLES = ("✨ Quick List", "🔗 Chain Maker", "🧭 Journey", "📻 Radio Mix")
-TAB_QUICK, TAB_CHAIN, TAB_JOURNEY, TAB_RADIO = range(len(TAB_TITLES))
+TAB_TITLES = ("✨ Quick List", "🔗 Chain Maker", "📻 Radio Mix")
+TAB_QUICK, TAB_CHAIN, TAB_RADIO = range(len(TAB_TITLES))
 
-# Quanti brani chiede un Journey, di default e al massimo. Sotto i tre non
-# c'è niente in mezzo da cercare.
-JOURNEY_DEFAULT = 12
-JOURNEY_MIN, JOURNEY_MAX = 3, 60
-
-# Quanti anelli aggiunge l'Auto chain in un colpo, e al massimo.
+# Quanti brani aggiunge l'Auto chain in un colpo, e al massimo: l'arrivo,
+# quando c'è, è l'ultimo di quelli aggiunti.
 AUTO_STEPS_DEFAULT = 8
-AUTO_STEPS_MAX = 50
+AUTO_STEPS_MAX = 60
 
 # Cosa chiede ogni scheda, e come risponde — nello stesso ordine.
 TAB_HINTS = (
@@ -102,22 +101,15 @@ TAB_HINTS = (
     "and magic sort.",
     "<b>What comes next?</b><br>One track at a time: a roster of nine "
     "mixes out of the last one, you take one, the roster is made again. "
-    "Trend looks a step ahead; Auto chain takes the top of the roster for "
-    "you, N times. The order you build is the order that comes out.",
-    "<b>How do I get from here to there?</b><br>A start, an optional "
-    "track to land on, and how many tracks in between: the cheapest run "
-    "of transitions through the library that joins the two — same cost, "
-    "same weights — while the energy follows the arc of a set, Intro to "
-    "Release, as much as the Arc knob asks. A draft in order, not a "
-    "ranking: send it on, then reorder by hand.",
+    "Trend looks a step ahead. Auto chain plans the next N for you — the "
+    "cheapest run of transitions, shaped by the arc of a set as much as "
+    "the Arc knob asks, towards a track to land on if you name one. The "
+    "order you build is the order that comes out.",
     "<b>More like these.</b><br>A playlist from a group — your favourites "
     "or the map selection — not from one seed. Sound only, against the "
     "group's taste; each pick is penalised for resembling the ones before, "
     "so it covers the group without repeating. Magic-sorted at the end.",
 )
-
-# Da dove parte il Journey: la scelta del menu, nell'ordine del menu.
-JOURNEY_SOURCES = ("The seed", "Last of the chain", "Last of the playlist")
 
 # Da dove parte la Radio: la scelta del menu, nell'ordine del menu.
 RADIO_SOURCES = ("Favourites", "Map selection", "Playlist")
@@ -220,7 +212,7 @@ class SearchPicker(QWidget):
 
 
 class SetBuilderPanel(QWidget):
-    """Il pannello: il conto sopra, le quattro schede sotto.
+    """Il pannello: il conto sopra, le tre schede sotto.
 
     I tre pesi del costo NON stanno qui: sono della pagina (la riga
     «Transition cost» sopra le schede di destra), perché li legge anche la
@@ -262,18 +254,15 @@ class SetBuilderPanel(QWidget):
         self._radio_key: tuple | None = None
         self._radio_shown: list[int] = []
         self._radio_negatives: list[int] = []
-        # Il Journey: l'arrivo scelto per nome, da cosa è stato pianificato
-        # e cosa ha proposto. Le quattro misure dell'arco sulla libreria si
-        # fanno una volta per libreria, alla prima richiesta.
-        self._journey_end: int | None = None
-        self._journey_key: tuple | None = None
-        self._journey_shown: list[int] = []
+        # L'Auto chain: dove deve arrivare, se lo si sa. Le quattro misure
+        # dell'arco sulla libreria si fanno una volta per libreria, alla
+        # prima richiesta.
+        self._chain_end: int | None = None
         self._arc_values: np.ndarray | None = None
         self._build()
         state.favourites_changed.connect(lambda _: self._refresh_radio())
-        # La playlist è una delle partenze del Journey e una delle sorgenti
-        # della Radio: quando cambia, tutti e due lo devono sapere.
-        state.playlist_changed.connect(lambda _: self._refresh_journey())
+        # La playlist è una delle sorgenti della Radio: quando cambia, lo
+        # deve sapere.
         state.playlist_changed.connect(lambda _: self._refresh_radio())
 
     # ------------------------------------------------------------------
@@ -297,7 +286,6 @@ class SetBuilderPanel(QWidget):
         self._tabs = QTabWidget()
         self._tabs.addTab(self._build_quicklist(), TAB_TITLES[TAB_QUICK])
         self._tabs.addTab(self._build_chain(), TAB_TITLES[TAB_CHAIN])
-        self._tabs.addTab(self._build_journey(), TAB_TITLES[TAB_JOURNEY])
         self._tabs.addTab(self._build_radio(), TAB_TITLES[TAB_RADIO])
         # La domanda di ogni scheda, sulla linguetta: si legge prima di
         # aprirla, che è quando serve sapere quale aprire.
@@ -525,14 +513,16 @@ class SetBuilderPanel(QWidget):
         grow.addWidget(self._roster_add, stretch=1)
         self._auto = QPushButton("⚡ Auto chain")
         auto_why = theme.hint(
-            "The chain grows on its own: the top of the roster is taken, "
-            "becomes the source, the roster is made again, and so on for "
-            "as many steps as the number here. Same cost, same weights, "
-            "same rules on copies as picking by hand — and Trend counts, "
-            "so a rising chain keeps rising. It starts from the track in "
-            "«Branch from». Unlike Radio Mix it judges tempo and key too, "
-            "keeps the order it chose, and does not care whether the fifth "
-            "track sounds like the first.")
+            "The chain grows on its own, N tracks in one go: the cheapest "
+            "run of transitions through the tracks that pass the filters, "
+            "from the track in «Branch from» — same cost, same weights, "
+            "same rules on copies as picking by hand — planned as a whole, "
+            "not one step at a time, so the fifth track is chosen knowing "
+            "the first. Name a track to land on and the run ends there, "
+            "N tracks later; leave it open and it ends wherever the "
+            "transitions lead. No track twice, no twins back to back. "
+            "Unlike Radio Mix it judges tempo and key too, and keeps the "
+            "order it chose.")
         self._auto.setToolTip(auto_why)
         self._auto.clicked.connect(self._on_auto_chain)
         grow.addWidget(self._auto)
@@ -541,7 +531,48 @@ class SetBuilderPanel(QWidget):
         self._auto_steps.setValue(AUTO_STEPS_DEFAULT)
         self._auto_steps.setToolTip(auto_why)
         grow.addWidget(self._auto_steps)
+        self._auto_arc = _knob(
+            grow, "Arc", 0.5, "transitions only", "the shape of a set",
+            "How much each position of the run is asked to sit in its "
+            "chapter of the arc — Intro, Buildup, Tension, Climax, "
+            "Release: tempo, energy, mood and groove in the chapter's "
+            "band, on the scale of your library — against how cheap the "
+            "transition is. At 0 the run is the smoothest row of "
+            "transitions and nothing else. The arc spans the run, not "
+            "the whole chain.")
         gbox.addLayout(grow)
+
+        # L'arrivo: dove la corsa deve finire, se lo si sa. Tre modi di
+        # dirlo, in un menu — il seme sulla mappa, un file dal Finder, un
+        # nome — e la ✕ per lasciarlo aperto.
+        land = QHBoxLayout()
+        land.addWidget(QLabel("Land on"))
+        self._end_told = QLabel("")
+        self._end_told.setToolTip(theme.hint(
+            "The track Auto chain lands on. Optional: without it the run "
+            "ends wherever the cheapest transitions lead. Once reached, "
+            "it is the last of the chain and the field opens again."))
+        land.addWidget(self._end_told, stretch=1)
+        self._end_pick = QPushButton("Pick ▾")
+        picks = QMenu(self)
+        picks.addAction("The seed on the map", self._on_end_from_map)
+        picks.addAction("A file, from Finder…", self._on_end_from_finder)
+        picks.addAction("By name…", self._on_end_by_name)
+        self._end_pick.setMenu(picks)
+        land.addWidget(self._end_pick)
+        self._end_clear = QPushButton("✕")
+        self._end_clear.setFixedWidth(44)
+        self._end_clear.setToolTip("Leave the end open.")
+        self._end_clear.clicked.connect(self._on_end_clear)
+        self._end_clear.setVisible(False)
+        land.addWidget(self._end_clear)
+        gbox.addLayout(land)
+        self._end_search = SearchPicker(
+            "land on a track — type part of its name")
+        self._end_search.picked.connect(self._on_end_picked)
+        self._end_search.setVisible(False)
+        gbox.addWidget(self._end_search)
+        self._refresh_end()
         gbox = going.layout()
 
         by_name = QHBoxLayout()
@@ -575,102 +606,6 @@ class SetBuilderPanel(QWidget):
         self._chain.addWidget(start)
         self._chain.addWidget(going)
         return self._chain
-
-    def _build_journey(self) -> QWidget:
-        page = QWidget()
-        box = QVBoxLayout(page)
-        journey_why = theme.hint(
-            "The Journey: from one track to another in N steps. The start "
-            "is the seed, the last of the chain or the last of the playlist; "
-            "the end is optional — pick it by name, or leave it open and the "
-            "set goes where the transitions lead. Every hop is judged by the "
-            "transition cost with the weights above the tabs, on a corridor of the "
-            "tracks that pass the filters and sit between the two; the Arc "
-            "knob asks each position to sit in its chapter — Intro, Buildup, "
-            "Tension, Climax, Release — as the chapters read them. No track "
-            "twice, no twins back to back, copies of the same song once.")
-
-        ends = QHBoxLayout()
-        ends.addWidget(QLabel("From"))
-        self._journey_from = QComboBox()
-        self._journey_from.addItems(JOURNEY_SOURCES)
-        self._journey_from.setToolTip(theme.hint(
-            "Where the Journey starts. The seed: what is clicked on the map "
-            "or ticked in the playlist. Last of the chain, last of the "
-            "playlist: to continue what is already built."))
-        self._journey_from.currentIndexChanged.connect(
-            lambda _: self._refresh_journey())
-        ends.addWidget(self._journey_from)
-        ends.addSpacing(12)
-        self._journey_count = QSpinBox()
-        self._journey_count.setRange(JOURNEY_MIN, JOURNEY_MAX)
-        self._journey_count.setValue(JOURNEY_DEFAULT)
-        self._journey_count.setToolTip("How many tracks, the two ends "
-                                       "included.")
-        self._journey_count.valueChanged.connect(lambda _: self._replan())
-        ends.addWidget(QLabel("Tracks"))
-        ends.addWidget(self._journey_count)
-        ends.addSpacing(12)
-        self._journey_arc = _knob(
-            ends, "Arc", 0.5, "transitions only", "the shape of a set",
-            "How much each position is asked to sit in its chapter of the "
-            "arc — tempo, energy, mood and groove in the chapter's band, "
-            "on the scale of your library — against how cheap the "
-            "transition is. At 0 the Journey is the smoothest run of "
-            "transitions and nothing else.")
-        self._journey_arc.valueChanged.connect(lambda _: self._replan())
-        ends.addStretch(1)
-        box.addLayout(ends)
-
-        to = QHBoxLayout()
-        to.addWidget(QLabel("To"))
-        self._journey_end_told = QLabel("")
-        self._journey_end_told.setToolTip(theme.hint(
-            "The track the Journey lands on. Optional: without it the last "
-            "track is wherever the cheapest run ends."))
-        to.addWidget(self._journey_end_told, stretch=1)
-        self._journey_end_clear = QPushButton("✕")
-        self._journey_end_clear.setFixedWidth(44)
-        self._journey_end_clear.setToolTip("Leave the end open.")
-        self._journey_end_clear.clicked.connect(self._on_journey_end_clear)
-        to.addWidget(self._journey_end_clear)
-        box.addLayout(to)
-        self._journey_end_search = SearchPicker(
-            "land on a track — type part of its name, or leave it open")
-        self._journey_end_search.picked.connect(self._on_journey_end)
-        box.addWidget(self._journey_end_search)
-
-        self._journey_told = QLabel("")
-        self._journey_told.setWordWrap(True)
-        box.addWidget(self._journey_told)
-        self._journey_ask = QPushButton("🧭 Plan the journey")
-        self._journey_ask.setToolTip(journey_why)
-        self._journey_ask.clicked.connect(self._on_ask_journey)
-        box.addWidget(self._journey_ask)
-        self._journey_wait = _dim(WAITING_FOR_THE_BUTTON)
-        box.addWidget(self._journey_wait)
-        self._journey_table = TrackTable(checkable=True, favouritable=True)
-        self._journey_table.setToolTip(journey_why)
-        self._wire(self._journey_table)
-        box.addWidget(self._pick_row(self._journey_table,
-                                     reset=self._on_reset_journey))
-        box.addWidget(self._journey_table, stretch=1)
-        self._journey_doubles = _dim("")
-        self._journey_doubles.setToolTip(DOUBLES_HINT)
-        self._journey_doubles.setVisible(False)
-        box.addWidget(self._journey_doubles)
-        self._journey_add = QPushButton("➕ Add selected to the playlist")
-        self._journey_add.clicked.connect(lambda: self._send_journey("append"))
-        self._journey_send = QPushButton("↺ Send as a new playlist")
-        self._journey_send.setToolTip("Starts over: what is in the playlist "
-                                      "now is dropped.")
-        self._journey_send.clicked.connect(
-            lambda: self._send_journey("replace"))
-        row = QHBoxLayout()
-        row.addWidget(self._journey_add)
-        row.addWidget(self._journey_send)
-        box.addLayout(row)
-        return page
 
     def _build_radio(self) -> QWidget:
         page = QWidget()
@@ -759,7 +694,8 @@ class SetBuilderPanel(QWidget):
         self._lib = lib
         self._group_shown = None    # il frame è nuovo: la tabella va rifatta
         self._arc_values = None     # e i ranghi dell'arco con lui
-        self._journey_end = None
+        self._chain_end = None
+        self._refresh_end()
         self._apply_weights()
         self._refresh_all()
 
@@ -770,7 +706,7 @@ class SetBuilderPanel(QWidget):
             options = pool.tolist()
             self._start_search.set_universe(self._lib.frame, options)
             self._byhand_search.set_universe(self._lib.frame, options)
-            self._journey_end_search.set_universe(self._lib.frame, options)
+            self._end_search.set_universe(self._lib.frame, options)
         self._refresh_all()
 
     def set_choice(self, seed: int | None, selected: list[int],
@@ -802,14 +738,12 @@ class SetBuilderPanel(QWidget):
         self._apply_weights()
         self._refresh_quick()
         self._refresh_roster()
-        self._replan()
         self._retune()
 
     def _refresh_all(self) -> None:
         self._refresh_seed_told()
         self._refresh_quick()
         self._refresh_chain()
-        self._refresh_journey()
         self._refresh_radio()
 
     def _refresh_seed_told(self) -> None:
@@ -1125,7 +1059,6 @@ class SetBuilderPanel(QWidget):
         if fresh:
             self._chain_table.set_picked(
                 set(self._chain_table.selected_paths()) | fresh)
-        self._refresh_journey()
         self.chain_changed.emit(self._walk())
 
     def _on_start_from_choice(self) -> None:
@@ -1198,32 +1131,102 @@ class SetBuilderPanel(QWidget):
         source_idx = at_path.get(self._source)
         if source_idx is None:
             return
-        walk = self._walk()
-        at = walk.index(self._source) if self._source in walk else 0
-        previous = at_path.get(walk[at - 1]) if at > 0 else None
-        added = auto_chain(
-            self._lib.cost,
-            [at_path[p] for p in self._graph.tracks if p in at_path],
-            source_idx, self._auto_steps.value(), previous=previous,
-            pool=self._pool,
-            key_of=lambda i: normalized_name(Path(frame.at[i, "path"])),
-            song_of=lambda i: song_key(Path(frame.at[i, "path"])),
-            trend=self._trend.value())
+        end = self._chain_end
+        if end is not None and end == source_idx:
+            end = None
+        if end is not None and frame.at[end, "path"] in self._graph:
+            self._end_told.setText(
+                f"<b>{_label(str(frame.at[end, 'name']))}</b> "
+                "<i>is already on the chain — pick another</i>")
+            return
+        steps, w_arc = self._auto_steps.value(), self._auto_arc.value()
+        # La fila parte dalla sorgente, che c'è già: `steps` sono i brani
+        # in più, l'arrivo compreso quando c'è.
+        path = journey.plan(
+            self._lib.cost, source_idx, steps + 1, end=end, pool=self._pool,
+            taken=[at_path[p] for p in self._graph.tracks if p in at_path],
+            arc_values=self._arc_of_library(), w_arc=w_arc,
+            song_of=lambda i: song_key(Path(frame.at[i, "path"])))
+        added = path[1:]
         if not added:
             return
         paths = [frame.at[i, "path"] for i in added]
-        # Non è una scelta: è la macchina che prende il primo. Va nel
-        # quaderno con un nome suo, o chi imparerà dai «pick» imparerebbe
-        # che il primo della rosa è sempre quello giusto.
+        # Non è una scelta: è la macchina che pianifica. Va nel quaderno
+        # con un nome suo, o chi imparerà dai «pick» imparerebbe che la
+        # fila della macchina è sempre quella giusta.
         self._journal.record(
-            "auto_chain", source=self._source, steps=self._auto_steps.value(),
-            added=paths, trend=self._trend.value(),
-            weights=list(self.weights()))
+            "auto_chain", source=self._source, steps=steps,
+            end=frame.at[end, "path"] if end is not None else None,
+            arc=w_arc, added=paths, weights=list(self.weights()))
         previous_path = self._source
         for path in paths:
             self._graph.add(previous_path, path)
             previous_path = path
+        # Arrivati: l'arrivo è l'ultimo della catena, e il campo si riapre.
+        self._chain_end = None
+        self._refresh_end()
         self._chained(self._graph, previous_path)
+
+    def _arc_of_library(self) -> np.ndarray:
+        if self._arc_values is None:
+            frame = self._lib.frame
+            self._arc_values = arc.measures(
+                frame["bpm"].tolist(), frame["energy"].tolist(),
+                frame["valence_rank"].tolist(),
+                frame["danceability"].tolist())
+        return self._arc_values
+
+    # --- l'arrivo dell'Auto chain ---
+    def _on_end_from_map(self) -> None:
+        if self._seed is not None:
+            self._set_end(self._seed)
+        elif self._candidates:
+            self._set_end(self._candidates[0])
+        else:
+            self._end_told.setText("<i>nothing on the map — click a track "
+                                   "first</i>")
+
+    def _on_end_from_finder(self) -> None:
+        chosen, _ = QFileDialog.getOpenFileName(
+            self, "Land on a track", "", AUDIO_FILTER)
+        if chosen:
+            self._end_from_file(chosen)
+
+    def _end_from_file(self, chosen: str) -> None:
+        at_path = self._lib.at_path
+        index = at_path.get(chosen)
+        if index is None:
+            index = at_path.get(str(Path(chosen).resolve()))
+        if index is None:
+            self._end_told.setText(
+                f"<i>{Path(chosen).name} is not on the map</i>")
+            return
+        self._set_end(index)
+
+    def _on_end_by_name(self) -> None:
+        self._end_search.setVisible(True)
+        self._end_search.setFocus()
+
+    def _on_end_picked(self, index: int) -> None:
+        self._end_search.clear()
+        self._end_search.setVisible(False)
+        self._set_end(int(index))
+
+    def _on_end_clear(self) -> None:
+        self._set_end(None)
+
+    def _set_end(self, index: int | None) -> None:
+        self._chain_end = index
+        self._refresh_end()
+
+    def _refresh_end(self) -> None:
+        end = self._chain_end
+        if end is None or self._lib is None:
+            self._end_told.setText("<i>open — wherever the run ends</i>")
+        else:
+            self._end_told.setText(
+                f"<b>{_label(str(self._lib.frame.at[end, 'name']))}</b>")
+        self._end_clear.setVisible(end is not None)
 
     def _on_attach_by_name(self, index: int) -> None:
         if self._source is None or self._source not in self._graph:
@@ -1255,177 +1258,6 @@ class SetBuilderPanel(QWidget):
         self._journal.record("chain_sent", how="replace", walk=self._walk(),
                              sent=len(sent))
         self.replace_playlist.emit(sent)
-
-    # ------------------------------------------------------------------
-    # Journey
-    # ------------------------------------------------------------------
-    def _journey_start(self) -> int | None:
-        """La partenza secondo il menu: il seme (o il primo del gruppo),
-        l'ultimo della catena, l'ultimo della playlist."""
-        which = self._journey_from.currentIndex()
-        if which == 0:
-            if self._seed is not None:
-                return self._seed
-            return self._candidates[0] if self._candidates else None
-        at_path = self._lib.at_path
-        if which == 1:
-            walk = self._walk()
-            return at_path.get(walk[-1]) if walk else None
-        on_list = self._playlist_indices()
-        return on_list[-1] if on_list else None
-
-    def _journey_names(self, start: int | None,
-                       end: int | None) -> tuple[str, str]:
-        frame = self._lib.frame
-        here = (_label(str(frame.at[start, "name"])) if start is not None
-                else "nothing to start from")
-        there = (_label(str(frame.at[end, "name"])) if end is not None
-                 else "open")
-        return here, there
-
-    def _refresh_journey(self) -> None:
-        if self._lib is None:
-            return
-        start = self._journey_start()
-        end = self._journey_end
-        if end is not None and end == start:
-            end = None
-        frame = self._lib.frame
-        key = (frame.at[start, "path"] if start is not None else None,
-               frame.at[end, "path"] if end is not None else None)
-        if key != self._journey_key:
-            # Estremi nuovi: la fila di prima parlava di un altro viaggio.
-            self._journey_key = None
-            self._journey_shown = []
-            self._journey_table.clear_picks()
-        here, there = self._journey_names(start, end)
-        self._journey_end_told.setText(
-            f"<b>{there}</b>" if end is not None
-            else "<i>open — wherever the cheapest run ends</i>")
-        self._journey_end_clear.setVisible(self._journey_end is not None)
-        can = start is not None and self._lib.store is not None
-        if start is None:
-            which = self._journey_from.currentIndex()
-            self._journey_told.setText(
-                "The playlist is empty — put some tracks in it, or pick "
-                "another start in the menu." if which == 2 else
-                "The chain is empty — start one in Chain Maker, or pick "
-                "another start in the menu." if which == 1 else
-                "Nothing to start from — click a seed on the map, or pick "
-                "another start in the menu.")
-        elif self._lib.store is None:
-            self._journey_told.setText("No embeddings to travel on.")
-        else:
-            self._journey_told.setText(f"<b>From {here}</b> · to {there}.")
-        self._journey_ask.setVisible(self._journey_key is None)
-        self._journey_ask.setEnabled(can)
-        self._journey_wait.setVisible(self._journey_key is None)
-        for widget in (self._journey_table, self._journey_add,
-                       self._journey_send):
-            widget.setVisible(self._journey_key is not None)
-        if self._journey_key is None:
-            self._journey_doubles.setVisible(False)
-            self._retitle(TAB_JOURNEY, 0)
-
-    def _on_journey_end(self, index: int) -> None:
-        self._journey_end = int(index)
-        self._journey_end_search.clear()
-        self._refresh_journey()
-
-    def _on_journey_end_clear(self) -> None:
-        self._journey_end = None
-        self._refresh_journey()
-
-    def _on_ask_journey(self) -> None:
-        if self._lib is None or self._lib.store is None:
-            return
-        start = self._journey_start()
-        if start is None:
-            return
-        end = self._journey_end if self._journey_end != start else None
-        frame = self._lib.frame
-        self._journey_key = (frame.at[start, "path"],
-                             frame.at[end, "path"] if end is not None else None)
-        self._show_journey()
-
-    def _on_reset_journey(self) -> None:
-        self._journey_key = None
-        self._journey_table.clear_picks()
-        self._refresh_journey()
-
-    def _replan(self) -> None:
-        """Una manopola toccata a viaggio aperto: si rifà con gli stessi
-        estremi."""
-        if self._journey_key is not None and self._lib is not None:
-            self._show_journey()
-
-    def _arc_of_library(self) -> np.ndarray:
-        if self._arc_values is None:
-            frame = self._lib.frame
-            self._arc_values = arc.measures(
-                frame["bpm"].tolist(), frame["energy"].tolist(),
-                frame["valence_rank"].tolist(),
-                frame["danceability"].tolist())
-        return self._arc_values
-
-    def _show_journey(self) -> None:
-        frame, common, at_path = (self._lib.frame, self._lib.common,
-                                  self._lib.at_path)
-        start = at_path.get(self._journey_key[0])
-        end = at_path.get(self._journey_key[1]) \
-            if self._journey_key[1] is not None else None
-        if start is None:
-            self._on_reset_journey()
-            return
-        w_arc = self._journey_arc.value()
-        path = journey.plan(
-            self._lib.cost, start, self._journey_count.value(), end=end,
-            pool=self._pool, arc_values=self._arc_of_library(), w_arc=w_arc,
-            song_of=lambda i: song_key(Path(frame.at[i, "path"])))
-        self._journey_shown = path
-        shown = numbered_rows(frame, path, common)
-        if w_arc > 0:
-            # Il capitolo di ogni posizione, come lo chiede l'arco: la
-            # stessa pastiglia della playlist, perché è la stessa cosa.
-            names = [arc.CHAPTERS[c]["name"]
-                     for c in arc.chapters_along(len(path))]
-            shown.insert(1, "chapter", [[name] for name in names])
-        self._journey_table.set_tracks(
-            shown, genre_colors(frame, shown["genres"], dark=theme.DARK))
-        # Tutte spuntate: la fila È la proposta, si toglie chi non convince.
-        self._journey_table.set_all_picked(True)
-        marks, told = double_marks(list(shown["_path"]),
-                                   self._vectors_for(path))
-        self._journey_table.set_marks(marks)
-        self._journey_doubles.setText(told or "")
-        self._journey_doubles.setVisible(told is not None)
-        short = len(path) < self._journey_count.value()
-        here, there = self._journey_names(start, end)
-        self._journey_told.setText(
-            f"<b>From {here}</b> · to {there}."
-            + (f" Only {len(path)} track(s) could be joined: the filters "
-               "leave too few on the way." if short else ""))
-        self._journey_ask.setVisible(False)
-        self._journey_wait.setVisible(False)
-        for widget in (self._journey_table, self._journey_add,
-                       self._journey_send):
-            widget.setVisible(True)
-        self._retitle(TAB_JOURNEY, len(path))
-
-    def _send_journey(self, how: str) -> None:
-        at_path, frame = self._lib.at_path, self._lib.frame
-        wanted = [at_path[p] for p in self._journey_table.selected_paths()
-                  if p in at_path]
-        if not wanted:
-            return
-        self._journal.record(
-            "journey_sent", how=how, start=self._journey_key[0],
-            end=self._journey_key[1], count=self._journey_count.value(),
-            arc=self._journey_arc.value(), weights=list(self.weights()),
-            shown=[frame.at[i, "path"] for i in self._journey_shown],
-            ticked=[frame.at[i, "path"] for i in wanted])
-        (self.append_playlist if how == "append"
-         else self.replace_playlist).emit(wanted)
 
     # ------------------------------------------------------------------
     # Radio
