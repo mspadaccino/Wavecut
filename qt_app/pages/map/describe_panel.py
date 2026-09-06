@@ -449,6 +449,9 @@ class DescribePanel(QWidget):
             self._year_to.setValue(query.years[1])
         self._genres.set_checked(query.genres)
         self._moods.set_checked(query.moods)
+        # Le voci lette in cima alle liste: sono quelle da controllare.
+        self._genres.raise_checked()
+        self._moods.raise_checked()
         self._bpm_on.setChecked(query.bpm is not None)
         if query.bpm:
             self._bpm.set_values(*query.bpm)

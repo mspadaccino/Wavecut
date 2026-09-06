@@ -14,6 +14,15 @@ tag `year`, quando c'è, non si tocca. Vedi `core/analysis/year_guess.py`.
 Un lotto dura di solito meno di un'ora. Fra `--submit` e `--collect` si
 può chiudere tutto: il lotto è segnato su disco accanto alla mappa.
 
+La via senza API, con la chat di Claude che sta nell'abbonamento:
+
+    poetry run python years_cli.py --export ~/Desktop/anni    # i file .txt
+    # ogni file va dato alla chat («compila questo»), la risposta salvata
+    # accanto con lo stesso nome e la coda «-answer.txt»
+    poetry run python years_cli.py --import ~/Desktop/anni/years-001-answer.txt
+
+Manuale, ma gratis. L'app non guida la chat da sola: non si fa.
+
 La chiave è la stessa di Describe (portachiavi di sistema, o la variabile
 ANTHROPIC_API_KEY). Quello che parte per ogni brano: titolo e artista dai
 tag, nome del file e della cartella. Niente altro.
@@ -28,12 +37,13 @@ from pathlib import Path
 from core.analysis import api_keys, year_guess
 from core.analysis.map_store import MapStore, default_store_dir
 
-# Stime di spesa, per il dry-run: token per brano in ingresso e in uscita
-# (misurati a spanne su righe come `year_guess.line`), e i prezzi batch —
-# metà del listino — al momento di scrivere, per milione di token, in e
-# out. Un modello non in tabella si stima come Opus. Un ordine di
-# grandezza, non una fattura.
-TOKENS_IN_PER_TRACK, TOKENS_OUT_PER_TRACK = 30, 18
+# Stime di spesa, per il dry-run: token per brano in ingresso e in uscita,
+# TARATI su un lotto vero (42.000 brani, Sonnet 5 in batch, circa dieci
+# dollari): il prologo si paga a ogni richiesta, e una riga da DJ è lunga.
+# Poi i prezzi batch — metà del listino — al momento di scrivere, per
+# milione di token, in e out. Un modello non in tabella si stima come
+# Opus. Un ordine di grandezza, non una fattura.
+TOKENS_IN_PER_TRACK, TOKENS_OUT_PER_TRACK = 75, 30
 BATCH_USD_PER_MTOK = {
     "claude-opus-5": (2.5, 12.5),
     "claude-sonnet-5": (1.0, 5.0),
@@ -83,6 +93,45 @@ def _show(rows: list[dict], count: int) -> None:
               + year_guess.line(0, row)[3:])
 
 
+def _import(store, store_dir: Path, files: list[Path]) -> None:
+    """Le risposte della chat sulla mappa: il file dice a quale lotto e a
+    quale pezzo appartiene, per nome."""
+    lots = [lot for lot in year_guess.pending_lots(store_dir)
+            if lot.model == "chat"]
+    if not lots:
+        sys.exit("Nessun export in attesa: prima --export DIR.")
+    written = 0
+    for path in files:
+        name = path.stem.removesuffix("-answer")
+        try:
+            text = path.read_text("utf-8", errors="replace")
+        except OSError as trouble:
+            print(f"{path.name}: non si legge ({trouble})")
+            continue
+        for lot in lots:
+            dated = year_guess.import_answer(store, lot, name, text)
+            if dated >= 0:
+                answered = len(year_guess.parse_chat_answer(text))
+                asked = len(lot.requests[name])
+                print(f"{path.name}: {answered:,} risposte su {asked:,} "
+                      f"brani · {dated:,} datati")
+                del lot.requests[name]
+                year_guess.save_lot(store_dir, lot) if lot.requests \
+                    else year_guess.forget_lot(store_dir, lot)
+                written += answered
+                break
+        else:
+            print(f"{path.name}: nessun export si chiama «{name}» — i file "
+                  "vanno tenuti col loro nome")
+    if written:
+        store.rewrite()
+    left = sum(lot.tracks for lot in year_guess.pending_lots(store_dir)
+               if lot.model == "chat")
+    print(f"Stimati ora: "
+          f"{sum(1 for r in store.rows if r.get('year_guess') is not None):,}"
+          + (f" · ancora da importare {left:,} brani" if left else ""))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="L'anno stimato da Claude per i brani senza anno.")
@@ -100,14 +149,23 @@ def main() -> None:
                         help="I lotti in attesa, e a che punto sono")
     parser.add_argument("--collect", action="store_true",
                         help="Scrive sulla mappa le risposte dei lotti finiti")
+    parser.add_argument("--export", type=Path, metavar="DIR",
+                        help="Scrive i brani da chiedere in file .txt per la "
+                             "chat di Claude, in DIR")
+    parser.add_argument("--per-file", type=int, default=year_guess.PER_FILE,
+                        help="Brani per file di testo")
+    parser.add_argument("--import", dest="import_", type=Path, nargs="+",
+                        metavar="FILE",
+                        help="Rilegge le risposte della chat salvate in FILE "
+                             "(years-001-answer.txt, o years-001.txt)")
     parser.add_argument("--show", type=int, metavar="N", default=0,
                         help="Mostra N stime a campione, con la fiducia, per "
                              "giudicarle a orecchio")
     args = parser.parse_args()
     if not (args.dry_run or args.submit or args.status or args.collect
-            or args.show):
+            or args.show or args.export or args.import_):
         parser.error("dimmi cosa fare: --dry-run, --submit, --status, "
-                     "--collect o --show N")
+                     "--collect, --show N, --export DIR o --import FILE")
 
     store = MapStore.load(args.store)
     rows = store.rows
@@ -119,6 +177,23 @@ def main() -> None:
 
     if args.show:
         _show(rows, args.show)
+        return
+
+    if args.export:
+        lot = year_guess.export(store, args.export, per_file=args.per_file,
+                                limit=args.limit)
+        if lot is None:
+            print("Niente da chiedere.")
+            return
+        year_guess.save_lot(args.store, lot)
+        print(f"Scritti {len(lot.requests):,} file in {args.export} per "
+              f"{lot.tracks:,} brani. Ogni file va dato alla chat di Claude "
+              "(«compila questo»); salva la risposta accanto, con lo stesso "
+              "nome e la coda -answer.txt, poi `--import` su quei file.")
+        return
+
+    if args.import_:
+        _import(store, args.store, args.import_)
         return
 
     if args.dry_run:
@@ -134,8 +209,13 @@ def main() -> None:
         return
 
     if args.status or args.collect:
-        lots = year_guess.pending_lots(args.store)
-        if not lots:
+        every = year_guess.pending_lots(args.store)
+        for lot in every:
+            if lot.model == "chat":
+                print(f"{lot.batch_id}: export per la chat, {lot.tracks:,} "
+                      f"brani in {len(lot.requests):,} file ancora da importare")
+        lots = [lot for lot in every if lot.model != "chat"]
+        if not every:
             print("Nessun lotto in attesa.")
         client = _client() if lots else None
         for lot in lots:

@@ -17,7 +17,7 @@ import sys
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QTimer, Signal
+from PySide6.QtCore import QObject, QSettings, Qt, QTimer, Signal
 from PySide6.QtWidgets import (QCheckBox, QDialog, QDoubleSpinBox,
                                QFileDialog, QHBoxLayout, QLabel, QMessageBox,
                                QPlainTextEdit, QProgressBar, QPushButton,
@@ -41,6 +41,9 @@ from qt_app.workers import run_in_pool
 # I segnali di pausa esistono solo sui POSIX: su Windows i due bottoni non
 # si disegnano — un job si può comunque fermare.
 CAN_PAUSE = hasattr(posix_signal, "SIGSTOP")
+
+# Dove si ricorda se il job chiede gli anni a Claude.
+GUESS_YEARS_KEY = "map/guess_years"
 
 
 def _dim(text: str = "") -> QLabel:
@@ -140,6 +143,25 @@ class SettingsDialog(QDialog):
         self._awake.setToolTip("A sleeping Mac freezes the job: it stays "
                                "alive without working.")
         self._awake.setVisible(sys.platform == "darwin")
+        # Gli anni da Claude in coda al job: chi ha la chiave non fa
+        # backfill. Ricordato, come il tema.
+        self._settings = QSettings(*theme.SETTINGS)
+        self._guess_years = QCheckBox("Ask Claude the year of tracks that "
+                                      "have none")
+        self._guess_years.setToolTip(theme.hint(
+            "At the end of the job, the tracks just added that carry no "
+            "year in their tags or their name are sent to Claude in groups "
+            "of forty — title, artist, file and folder name, nothing else — "
+            "and the original release year comes back as an estimate, with "
+            "how sure Claude was. Cents for a night's worth of new tracks, "
+            "on your API key (🔑 in Describe). Without a key the job says "
+            "so and moves on; years_cli.py can ask later."))
+        self._guess_years.setChecked(
+            str(self._settings.value(GUESS_YEARS_KEY, "false")).lower()
+            == "true")
+        self._guess_years.toggled.connect(
+            lambda on: self._settings.setValue(GUESS_YEARS_KEY,
+                                               "true" if on else "false"))
         self._launch = QPushButton("▶ Add all in the background")
         self._launch.setEnabled(False)
         self._launch.clicked.connect(self._on_launch)
@@ -147,6 +169,8 @@ class SettingsDialog(QDialog):
         workers_row.addWidget(QLabel("Analyses in parallel"))
         workers_row.addWidget(self._workers)
         workers_row.addWidget(self._awake, stretch=1)
+        guess_row = QHBoxLayout()
+        guess_row.addWidget(self._guess_years, stretch=1)
 
         # --- i brani spariti ---
         self._missing_told = _dim("")
@@ -206,6 +230,7 @@ class SettingsDialog(QDialog):
         box.addWidget(self._folder_told)
         box.addWidget(self._choose)
         box.addLayout(workers_row)
+        box.addLayout(guess_row)
         box.addWidget(self._launch)
         box.addLayout(missing_row)
         box.addSpacing(10)
@@ -339,6 +364,8 @@ class SettingsDialog(QDialog):
             return
         command = [*child_command(MAP_CLI_PATH), str(self._folder),
                    "--workers", str(self._workers.value()), "--project"]
+        if self._guess_years.isChecked():
+            command.append("--guess-years")
         if self._awake.isChecked():
             command = caffeinated(command)
         with open(DEFAULT_MAP_LOG, "w") as out:
