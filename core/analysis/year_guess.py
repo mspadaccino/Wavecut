@@ -302,3 +302,102 @@ def collect(client, store, lot: Lot) -> Collected:
     if out.answered:
         store.rewrite()
     return out
+
+
+# --------------------------------------------------------------------------
+# la via a mano: un file di testo per la chat, la risposta reimportata
+# --------------------------------------------------------------------------
+#
+# L'API si paga a consumo; la chat di Claude sta in un abbonamento. Per una
+# libreria propria, una volta, la strada è: l'app scrive i brani in file di
+# testo con la consegna in testa, il DJ li dà alla chat e salva la risposta,
+# l'app la rilegge. Manuale, ma gratis. L'app NON guida la chat da sé: non
+# si fa, e i termini d'uso lo vietano.
+
+# Quanti brani per file: la chat risponde con una riga per brano, e oltre
+# qualche centinaio taglia o si stanca.
+PER_FILE = 250
+
+CHAT_INSTRUCTIONS = """Below is a numbered list of tracks from a DJ's library, one per line, with what
+is known about each: the title and artist from the file's tags when they exist,
+and the file and folder names, which often carry the artist and title.
+
+For EVERY line, answer with one line in this exact form, nothing else:
+
+<id> | <year> | <confidence>
+
+- year: the year the recording was ORIGINALLY released — the original single
+  or album, not a reissue, a remaster or the compilation it was taken from. A
+  remix or extended version is dated by the year that version came out when
+  you know it, otherwise by the original. Write - when you cannot tell.
+- confidence: how sure you are, from 0 to 1. 1.0 for a famous record you know
+  for certain; about 0.5 when the artist and title are clear but the year is a
+  good guess; 0.2 or less when you are reading tea leaves; 0 with - for a track
+  you cannot identify at all.
+
+Keep the ids exactly as given, one answer per id, in order. No commentary.
+
+"""
+
+_ANSWER_LINE = re.compile(
+    r"^\s*(\d+)\s*[|;,\t]\s*(\d{4}|-|null|none|\?)\s*(?:[|;,\t]\s*([01](?:[.,]\d+)?|[.,]\d+))?",
+    re.I)
+
+
+def export_text(rows: list[dict], positions: list[int]) -> str:
+    """Il file per la chat: la consegna, poi i brani numerati da 1."""
+    listed = "\n".join(line(n + 1, rows[i]) for n, i in enumerate(positions))
+    return CHAT_INSTRUCTIONS + listed + "\n"
+
+
+def export(store, folder: Path, per_file: int = PER_FILE,
+           limit: int = 0) -> Lot | None:
+    """Scrive i file di testo per i brani da chiedere e segna il lotto,
+    come `submit`: la risposta si reimporta per nome di file."""
+    todo = candidates(store.rows)
+    if limit > 0:
+        todo = todo[:limit]
+    if not todo:
+        return None
+    folder.mkdir(parents=True, exist_ok=True)
+    rows = store.rows
+    lot = Lot(batch_id=f"chat-{folder.name}", model="chat")
+    for n, positions in enumerate(chunks(todo, per_file)):
+        name = f"years-{n + 1:03d}"
+        (folder / f"{name}.txt").write_text(export_text(rows, positions), "utf-8")
+        lot.requests[name] = [rows[i]["path"] for i in positions]
+    return lot
+
+
+def parse_chat_answer(text: str) -> dict[int, tuple[int | None, float]]:
+    """`{id: (anno, fiducia)}` dalle righe «id | anno | fiducia» che la chat
+    ha scritto, saltando tutto il resto. Una riga senza fiducia vale 0.5:
+    un anno detto senza dire quanto se ne è sicuri non filtra."""
+    out: dict[int, tuple[int | None, float]] = {}
+    for raw in str(text or "").splitlines():
+        found = _ANSWER_LINE.match(raw)
+        if not found:
+            continue
+        number = int(found.group(1))
+        year_text = found.group(2)
+        year = int(year_text) if year_text.isdigit() else None
+        if year is not None and not FIRST_YEAR <= year <= LAST_YEAR:
+            year = None
+        if found.group(3) is not None:
+            confidence = float(found.group(3).replace(",", "."))
+        else:
+            confidence = 0.0 if year is None else 0.5
+        out[number] = (year, max(0.0, min(1.0, confidence)))
+    return out
+
+
+def import_answer(store, lot: Lot, name: str, text: str) -> int:
+    """Le risposte di un file sulle righe, per percorso. Torna quante
+    righe hanno ricevuto un anno; -1 se `name` non è del lotto."""
+    paths = lot.requests.get(name)
+    if paths is None:
+        return -1
+    at_path = {row["path"]: i for i, row in enumerate(store.rows)}
+    numbered = {n + 1: at_path[p] for n, p in enumerate(paths) if p in at_path}
+    dated = apply(store.rows, numbered, parse_chat_answer(text))
+    return dated

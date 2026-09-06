@@ -179,3 +179,42 @@ def test_a_track_gone_from_the_map_loses_its_guess_without_shifting_the_others(t
     by_name = {Path(r["path"]).name: r for r in store.rows}
     assert by_name["a.mp3"]["year_guess"] == 1983
     assert by_name["c.mp3"]["year_guess"] == 1991       # il 3 resta il 3
+
+
+# --- la via a mano: file per la chat, risposta reimportata ---
+
+def test_export_writes_numbered_files_with_the_instructions_and_a_lot(tmp_path):
+    store = _store(tmp_path)
+    lot = year_guess.export(store, tmp_path / "chat", per_file=3)
+    assert lot.model == "chat" and list(lot.requests) == ["years-001", "years-002"]
+    text = (tmp_path / "chat" / "years-001.txt").read_text("utf-8")
+    assert text.startswith(year_guess.CHAT_INSTRUCTIONS)
+    assert "\n1. | file: a" in text and "\n3. | file: c" in text
+    assert "4. |" not in text                            # il quarto sta nel secondo file
+    assert year_guess.export(store, tmp_path / "chat", limit=0).tracks == 4
+
+
+def test_chat_answers_are_read_in_any_reasonable_shape():
+    text = """Here you go:
+1 | 1983 | 0.9
+2 | - | 0
+3; 1991; 0,4
+4 | 1700 | 1.0
+5 | 1975
+banter that is not an answer
+"""
+    assert year_guess.parse_chat_answer(text) == {
+        1: (1983, 0.9), 2: (None, 0.0), 3: (1991, 0.4), 4: (None, 1.0),
+        5: (1975, 0.5)}                                 # senza fiducia: non filtra
+
+
+def test_import_writes_the_answers_by_file_name(tmp_path):
+    store = _store(tmp_path)
+    lot = year_guess.export(store, tmp_path / "chat", per_file=3)
+    dated = year_guess.import_answer(store, lot, "years-001",
+                                     "1 | 1983 | 0.9\n2 | - | 0\n3 | 1991 | 0.7\n")
+    assert dated == 2
+    assert store.rows[0]["year_guess"] == 1983 and store.rows[2]["year_guess"] == 1991
+    assert store.rows[1]["year_guess"] is None
+    assert "year_guess" not in store.rows[3]            # l'altro file non è arrivato
+    assert year_guess.import_answer(store, lot, "nope", "1 | 1983 | 0.9") == -1
