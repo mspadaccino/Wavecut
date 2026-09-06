@@ -12,8 +12,9 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QCheckBox, QFileDialog, QHBoxLayout, QLabel,
-                               QLineEdit, QPushButton, QWidget)
+from PySide6.QtWidgets import (QCheckBox, QFileDialog, QFrame, QHBoxLayout,
+                               QLabel, QLineEdit, QPushButton, QScrollArea,
+                               QWidget)
 
 from qt_app import theme
 
@@ -39,6 +40,25 @@ def spelled(seconds: float) -> str:
     if seconds < 5400:
         return f"{seconds / 60:.0f} min"
     return f"{seconds / 3600:.1f} hours"
+
+
+def scrollable(inner: QWidget) -> QScrollArea:
+    """`inner` dentro una cornice che scorre, da mettere al suo posto.
+
+    Serve a chi il pannello lo CONTIENE più che al pannello: una
+    QScrollArea non eredita il minimo di quello che tiene dentro, quindi la
+    finestra può stringersi sotto la somma dei pannelli. Su un 13" era
+    proprio quella somma a fare da pavimento — la finestra non scendeva
+    sotto 1402x859 e il lettore finiva sotto il Dock. Dove lo spazio c'è,
+    il contenuto riempie come prima; dove manca, scorre invece di sparire.
+    """
+    area = QScrollArea()
+    area.setWidget(inner)
+    # Il contenuto segue la larghezza della cornice (niente riquadro stretto
+    # in mezzo al vuoto) e scende sotto solo quando non ci sta.
+    area.setWidgetResizable(True)
+    area.setFrameShape(QFrame.Shape.NoFrame)
+    return area
 
 
 def dim(text: str = "") -> QLabel:

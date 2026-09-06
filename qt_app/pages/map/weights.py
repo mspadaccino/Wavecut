@@ -30,7 +30,11 @@ class WeightSlider(QWidget):
         self._slider = QSlider(Qt.Orientation.Horizontal)
         self._slider.setRange(0, 20)
         self._slider.setValue(10)
-        self._slider.setMinimumWidth(90)
+        # Il minimo è quanto basta a trascinarlo, non quanto sta comodo:
+        # tre pesi con un minimo generoso facevano da pavimento alla
+        # larghezza della finestra. Dove c'è spazio lo slider se lo prende
+        # lo stesso — è la riga a distribuirlo.
+        self._slider.setMinimumWidth(40)
         self._told = QLabel("1.0")
         self._told.setFixedWidth(24)
         self.setToolTip(why)

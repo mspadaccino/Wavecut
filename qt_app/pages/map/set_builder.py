@@ -42,6 +42,7 @@ from core.analysis.mixing import magic_sort, nearest, sorted_after
 from core.viz.board import _label, chain_table, roster_table
 from core.viz.track_columns import READING_ORDER, genre_colors, reading
 from qt_app import theme
+from qt_app.pages.common import scrollable
 from qt_app.state import AppState
 from qt_app.widgets.track_table import TrackTable
 
@@ -303,10 +304,15 @@ class SetBuilderPanel(QWidget):
         for tab, told in enumerate(TAB_HINTS):
             self._tabs.setTabToolTip(tab, theme.hint(told))
 
-        box = QVBoxLayout(self)
+        panel = QWidget()
+        box = QVBoxLayout(panel)
         box.addWidget(self._seed_told)
         box.addLayout(knobs)
         box.addWidget(self._tabs, stretch=1)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(scrollable(panel))
 
     def _pick_row(self, table: TrackTable, reset=None) -> QWidget:
         """La riga che governa la lista: scelta in blocco e, dove serve, il

@@ -421,7 +421,13 @@ class MapPage(QWidget):
         split = QSplitter(Qt.Orientation.Horizontal)
         split.addWidget(left_box)
         split.addWidget(right_box)
-        split.setSizes([880, 620])
+        # Le due colonne come stavano PRIMA che i pannelli scorressero: era
+        # il loro minimo (752 px) a tenere la destra larga così, e la mappa
+        # prendeva il resto. Ora quel minimo non c'è più — è il prezzo di
+        # una finestra che si stringe — quindi la misura va chiesta, se no
+        # la destra nasce stretta e si porta dietro una barra orizzontale
+        # che prima non c'era. È una partenza: il divisorio si trascina.
+        split.setSizes([660, 770])
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)

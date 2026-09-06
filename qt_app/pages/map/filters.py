@@ -48,6 +48,7 @@ from core.analysis.presets import Presets
 from core.viz.filters import chapter_named, chapter_ranges, filter_tracks, span
 from core.viz.map_figure import genre_level
 from qt_app import theme
+from qt_app.pages.common import scrollable
 from qt_app.widgets.range_slider import RangeSlider
 from qt_app.widgets.wheel_view import WheelView
 
@@ -287,7 +288,11 @@ class FiltersPanel(QWidget):
         grid.addWidget(QLabel("Mood"), 3, 0)
         grid.addWidget(self._valence, 3, 1)
 
-        box = QVBoxLayout(self)
+        # Tutto il pannello dentro una cornice che scorre: la ruota, le
+        # liste e i cinque intervalli fanno 650 px buoni di altezza, e su
+        # uno schermo basso è la finestra intera a non starci più.
+        panel = QWidget()
+        box = QVBoxLayout(panel)
         box.addLayout(preset_row)
         box.addLayout(wheel_row)
         box.addLayout(depth_row)
@@ -295,6 +300,10 @@ class FiltersPanel(QWidget):
         box.addLayout(grid)
         box.addWidget(reset)
         box.addWidget(self._count)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(scrollable(panel))
 
     # --- la libreria detta le opzioni e le corse ---
     def set_frame(self, frame: pd.DataFrame) -> None:

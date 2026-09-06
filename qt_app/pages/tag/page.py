@@ -31,7 +31,8 @@ from core.analysis.essentia_tags import (MODEL_DIR, MODELS, available,
                                          scan_coverage)
 from core.analysis.tag_tracking import DEFAULT_TRACKING_FILE, ProcessedTracker
 from qt_app import theme
-from qt_app.pages.common import FolderRow, Metric, dim, reveal_in_files
+from qt_app.pages.common import (FolderRow, Metric, dim, reveal_in_files,
+                                 scrollable)
 from qt_app.state import AppState
 from qt_app.widgets.track_table import PandasModel, TrackTable
 from qt_app.workers import Progress, run_in_pool
@@ -157,10 +158,10 @@ class TagPage(QWidget):
         self._job = JobPanel(lambda: (self._run.settings_box.settings(),
                                       self._run.settings_box.workers.value()))
         panels = QTabWidget()
-        panels.addTab(self._run, "⚙️ Run")
-        panels.addTab(self._breakdown, "🧩 Breakdown")
-        panels.addTab(self._job, "🔁 Background job")
-        panels.addTab(self._environment(), "🧪 Environment")
+        panels.addTab(scrollable(self._run), "⚙️ Run")
+        panels.addTab(scrollable(self._breakdown), "🧩 Breakdown")
+        panels.addTab(scrollable(self._job), "🔁 Background job")
+        panels.addTab(scrollable(self._environment()), "🧪 Environment")
 
         split = QSplitter(Qt.Orientation.Horizontal)
         split.addWidget(left_box)

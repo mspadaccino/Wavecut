@@ -49,6 +49,7 @@ from core.viz.chapters import (CHAPTERS, assign_chapters,
                                board_chapter_regions)
 from core.viz.track_columns import genre_colors, reading
 from qt_app import theme
+from qt_app.pages.common import scrollable
 from qt_app.state import AppState
 from qt_app.widgets.board_view import BoardView
 from qt_app.widgets.track_table import TrackTable
@@ -590,12 +591,17 @@ class PlaylistPanel(QWidget):
         for button in (adding, loading, self._export):
             files_row.addWidget(button)
 
-        box = QVBoxLayout(self)
+        panel = QWidget()
+        box = QVBoxLayout(panel)
         box.addLayout(shelf_row)
         box.addLayout(header)
         box.addWidget(self._empty)
         box.addWidget(self._playlist_controls, stretch=1)
         box.addLayout(files_row)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(scrollable(panel))
 
     # ------------------------------------------------------------------
     # lo stato in mano
