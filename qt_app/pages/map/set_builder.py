@@ -3,7 +3,7 @@
 Quick List (cosa ci si mixa sopra), Chain Maker (un brano alla volta) e
 Radio Mix (una playlist da un GRUPPO: i preferiti o il lazo), sopra un pannello
 unico di pesi e "quanti elencare", che sono gli stessi filtri di partenza
-per tutte. In coda ce n'è una quarta che non nasce qui — Crate Talk, la
+per tutte. In coda ce n'è una quarta che non nasce qui — Crate Buddy, la
 playlist da una frase — appesa dalla pagina con `add_panel`: si costruisce
 una scaletta anche a parole, e il posto di quella domanda è fra le altre.
 C'era una scheda, Sounds like it, che rispondeva "cosa
@@ -307,7 +307,7 @@ class SetBuilderPanel(QWidget):
         """Una scheda in più, in coda alle tre: la costruisce la pagina e
         la appende qui.
 
-        Crate Talk sta dentro Set Curator ma NON si costruisce qui:
+        Crate Buddy sta dentro Set Curator ma NON si costruisce qui:
         `describe_panel` importa da questo modulo (`numbered_rows`), quindi
         importarlo a nostra volta chiuderebbe il cerchio. In coda, perché
         `_retitle` conta le schede per numero e i primi tre numeri devono

@@ -19,7 +19,7 @@ prologo si paga una volta ogni quaranta e non ogni uno.
 
 **La stima è una stima.** Va in un campo suo, `year_guess`, con la sua
 fiducia in `year_guess_conf`; il campo `year` dei tag non si tocca. Chi
-filtra (Crate Talk) legge il tag se c'è, la stima se è abbastanza sicura,
+filtra (Crate Buddy) legge il tag se c'è, la stima se è abbastanza sicura,
 e dice quante stime ha usato. Un brano già chiesto porta il campo, anche
 a `None`: non si richiede a ogni giro.
 """

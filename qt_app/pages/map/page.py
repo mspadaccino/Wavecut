@@ -392,7 +392,7 @@ class MapPage(QWidget):
         self._playlist.shelf_changed.connect(lambda _: self._retitle_panels())
         self._favourites = FavouritesPanel(self._state, self._wire)
         self._favourites.append_playlist.connect(self._on_builder_append)
-        # Crate Talk: una frase, la lettura da correggere, la lista. Scrive
+        # Crate Buddy: una frase, la lettura da correggere, la lista. Scrive
         # sullo scaffale della Playlist, per nome, e la porta sul tavolo.
         # Sta dentro Set Curator, in coda alle sue schede — è un altro modo
         # di costruire un set, non un'altra pagina — ma si costruisce qui,
@@ -401,7 +401,7 @@ class MapPage(QWidget):
         self._describe.append_playlist.connect(self._on_builder_append)
         self._describe.shelve_playlist.connect(self._on_describe_shelved)
         self._builder.add_panel(
-            self._describe, "💬 Crate Talk",
+            self._describe, "💬 Crate Buddy",
             "<b>A set from words.</b><br>Say what you would say to a "
             "record shop — «synth pop anni 80, solo versioni extended» — "
             "and it is read into a form you correct before searching. Not "
@@ -787,7 +787,7 @@ class MapPage(QWidget):
         self._panels.setCurrentWidget(self._playlist)
 
     def _on_describe_shelved(self, name: str, indices: list[int]) -> None:
-        """La lista di Crate Talk sullo scaffale col nome della frase, e sul
+        """La lista di Crate Buddy sullo scaffale col nome della frase, e sul
         tavolo. Se quel nome È la playlist sul tavolo, si riscrive lei."""
         if name == self._playlist.current_name():
             self._playlist.replace(indices)

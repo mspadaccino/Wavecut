@@ -1,5 +1,5 @@
-"""La scheda Crate Talk: la frase letta nel modulo, il modulo corretto a mano,
-la ricerca e la playlist sullo scaffale. Gira solo col gruppo `qt`."""
+"""La scheda Crate Buddy: la frase letta nel criterio, la ricerca e la
+playlist sullo scaffale. Gira solo col gruppo `qt`."""
 
 import os
 
@@ -121,13 +121,12 @@ def _run_now(job, done, failed):
     done(result)
 
 
-def test_a_collection_is_read_by_the_rules_into_the_form(qtbot, tmp_path, monkeypatch):
+def test_a_collection_is_read_by_the_rules_into_the_criterion(qtbot, tmp_path, monkeypatch):
     panel = _panel(qtbot, tmp_path, monkeypatch)
     panel._collections.setCurrentText("80s")
     assert panel._phrase.text() == "80s"
-    assert panel._years_on.isChecked()
-    assert (panel._year_from.value(), panel._year_to.value()) == (1980, 1989)
-    assert "Read by the rules" in panel._how_read.text()
+    assert 'read-by="the rules"' in panel._criterion.text()
+    assert '<years from="1980" to="1989"/>' in panel._criterion.text()
     assert panel.query().years == (1980, 1989)
 
 
@@ -150,13 +149,13 @@ def test_with_a_key_claude_reads_and_the_reading_is_remembered(qtbot, tmp_path, 
     panel._phrase.setText("house anni 90")
     panel._on_read()
     assert reader.calls == 1
-    assert "Read by Claude" in panel._how_read.text()
+    assert 'read-by="Claude"' in panel._criterion.text()
     assert panel.query().genres == ["Electronic - House"]
     assert panel.query().years == (1990, 1999)
 
     panel._on_read()                                    # la stessa frase
     assert reader.calls == 1                            # non si ripaga
-    assert "Read by memory" in panel._how_read.text()
+    assert 'read-by="memory"' in panel._criterion.text()
 
 
 def test_claude_can_be_switched_off_with_the_key_still_there(qtbot, tmp_path, monkeypatch):
@@ -168,7 +167,7 @@ def test_claude_can_be_switched_off_with_the_key_still_there(qtbot, tmp_path, mo
     panel._phrase.setText("90s")
     panel._on_read()
     assert reader.calls == 0                            # niente credito speso
-    assert "Read by the rules" in panel._how_read.text()
+    assert 'read-by="the rules"' in panel._criterion.text()
     assert panel.query().years == (1990, 1999)
     # La scelta si ricorda: un pannello nuovo sulle stesse impostazioni
     # nasce spento.
@@ -184,37 +183,44 @@ def test_when_the_model_fails_the_rules_take_over_and_say_so(qtbot, tmp_path, mo
     panel._phrase.setText("80s")
     panel._on_read()
     assert "key was refused" in panel._reader_told.text()
-    assert "Read by the rules" in panel._how_read.text()
+    assert 'read-by="the rules"' in panel._criterion.text()
     assert panel.query().years == (1980, 1989)
     assert panel._read.isEnabled()
 
 
-def test_the_labels_a_reading_ticks_come_to_the_top_of_their_lists(qtbot, tmp_path, monkeypatch):
+def test_the_labels_a_reading_finds_are_shown_as_seeds(qtbot, tmp_path, monkeypatch):
     panel = _panel(qtbot, tmp_path, monkeypatch)
-    listed = lambda picker: [picker._list.item(i).text()   # noqa: E731
-                             for i in range(picker._list.count())]
-    assert listed(panel._genres)[0] == "Electronic - Synth-pop"   # il più frequente
     panel._phrase.setText("new wave, dark")
     panel._on_read()
-    assert listed(panel._genres)[0] == "Rock - New Wave"
-    assert panel._genres.checked() == ["Rock - New Wave"]
-    assert listed(panel._moods)[0] == "dark"
-    assert set(listed(panel._genres)) == set(panel._vocabulary.genres)   # niente perso
+    told = panel._criterion.text()
+    assert "<seeds>" in told
+    assert "<genres>Rock - New Wave</genres>" in told
+    assert "<moods>dark</moods>" in told
+    assert panel.query().genres == ["Rock - New Wave"]
 
 
-def test_the_form_is_the_query_and_can_be_corrected_by_hand(qtbot, tmp_path, monkeypatch):
+def test_the_criterion_shown_is_the_whole_of_what_is_searched(qtbot, tmp_path, monkeypatch):
+    from core.analysis.describe import as_xml
+
     panel = _panel(qtbot, tmp_path, monkeypatch)
-    panel._phrase.setText("80s")
+    # Prima di leggere: si può cercare lo stesso, e il criterio lo dice.
+    assert "no phrase read yet" in panel._criterion.text()
+    assert panel.query().is_empty()
+
+    panel._phrase.setText("synth pop anni 80, solo versioni extended")
     panel._on_read()
-    panel._year_to.setValue(1985)                       # corretto a mano
-    panel._title_words.setText("extended, 12\"")
-    panel._minutes_on.setChecked(True)
-    panel._minutes.setValue(6.0)
     query = panel.query()
-    assert query.years == (1980, 1985)
-    assert query.title_words == ["extended", "12\""]
-    assert query.min_minutes == 6.0
-    assert query.how_read == "1980–1985 · title has extended / 12\" · ≥ 6 min"
+    # Quello che si vede È quello che si cerca: la stessa Query, nient'altro.
+    assert panel._criterion.text() == as_xml(
+        query, phrase="synth pop anni 80, solo versioni extended",
+        read_by="the rules")
+    assert query.years == (1980, 1989)
+    assert query.title_words == ["extended"]
+    # Una lettura nuova prende il posto della vecchia, per intero.
+    panel._phrase.setText("90s")
+    panel._on_read()
+    assert panel.query().years == (1990, 1999)
+    assert not panel.query().title_words
 
 
 def test_search_lists_the_matches_and_saves_them_under_the_phrase(qtbot, tmp_path, monkeypatch):
@@ -241,9 +247,8 @@ def test_search_lists_the_matches_and_saves_them_under_the_phrase(qtbot, tmp_pat
 
 def test_a_search_that_finds_nothing_says_why(qtbot, tmp_path, monkeypatch):
     panel = _panel(qtbot, tmp_path, monkeypatch)
-    panel._years_on.setChecked(True)
-    panel._year_from.setValue(1950)
-    panel._year_to.setValue(1959)
+    panel._phrase.setText("50s")
+    panel._on_read()
     panel._on_search()
     assert panel._found_told.text().startswith("No track matches")
     assert not panel._shelve.isEnabled()
@@ -252,8 +257,8 @@ def test_a_search_that_finds_nothing_says_why(qtbot, tmp_path, monkeypatch):
 def test_playlist_names_come_from_the_phrase():
     from qt_app.pages.map.describe_panel import playlist_name
     assert playlist_name("  synth pop   anni 80 ") == "synth pop anni 80"
-    assert playlist_name("a/b") == "Crate Talk"
-    assert playlist_name("") == "Crate Talk"
+    assert playlist_name("a/b") == "Crate Buddy"
+    assert playlist_name("") == "Crate Buddy"
 
 
 # --- la cura ---
@@ -303,7 +308,7 @@ def test_curation_asks_claude_over_a_wider_shortlist_and_keeps_its_picks(qtbot, 
     panel._curate.setChecked(True)
     panel._size.setValue(1)
     panel._phrase.setText("synth pop")
-    panel._genres.set_checked(["Electronic - Synth-pop"])
+    panel._show(Query(genres=["Electronic - Synth-pop"]), "a test")
     panel._on_search()
     phrase, candidates, size = curator.calls[0]
     assert phrase == "synth pop" and size == 1
@@ -319,7 +324,7 @@ def test_curation_is_off_without_ask_claude_and_falls_back_on_trouble(qtbot, tmp
     panel = _curating_panel(qtbot, tmp_path, monkeypatch, curator)
     panel._curate.setChecked(True)
     panel._ask_claude.setChecked(False)
-    panel._genres.set_checked(["Electronic - Synth-pop"])
+    panel._show(Query(genres=["Electronic - Synth-pop"]), "a test")
     panel._on_search()
     assert curator.calls == []                           # spento: niente rosa
     assert len(panel._table.paths()) == 4                # la lista locale intera
@@ -340,8 +345,6 @@ def test_the_years_hint_counts_claudes_estimates(qtbot, tmp_path, monkeypatch):
     frame["year_guess_conf"] = [0, 0, 0, 0.9]
     panel.set_library(panel._lib)
     assert "4 of 4 tracks carry a year (1 estimated by Claude)" in panel._years_hint.text()
-    panel._years_on.setChecked(True)
-    panel._year_from.setValue(1980)
-    panel._year_to.setValue(1989)
+    panel._show(Query(years=(1980, 1989)), "a test")
     panel._on_search()
     assert "1 dated by Claude's estimate" in panel._found_told.text()

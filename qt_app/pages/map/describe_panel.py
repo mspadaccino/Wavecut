@@ -1,11 +1,17 @@
-"""La scheda Crate Talk: una frase, e la playlist che le somiglia.
+"""La scheda Crate Buddy: una frase, e la playlist che le somiglia.
 
 «Synth pop anni 80, solo versioni extended» si scrive nella casella; la
-frase si LEGGE in un modulo — anni, generi, mood, tempo, parole nel
-titolo, durata — e il modulo si mostra PRIMA di cercare, in campi che si
-correggono a mano. Solo dopo la conferma si cerca, in locale, sulla mappa
-(`core.analysis.describe`), e la lista va nella playlist o sullo
-scaffale col nome della frase.
+frase si LEGGE in un criterio — anni, generi, mood, tempo, parole nel
+titolo, durata — e il criterio si mostra per intero PRIMA di cercare, in
+XML: quello che non è scritto lì non si applica. Solo dopo si cerca, in
+locale, sulla mappa (`core.analysis.describe`), e la lista va nella
+playlist o sullo scaffale col nome della frase.
+
+Il criterio si LEGGE e non si tocca. C'erano dei campi al suo posto, che
+si correggevano a mano, ma li leggeva solo il bottone Search: chi spuntava
+un genere e guardava la tabella vedeva una lista che quel genere non lo
+aveva mai sentito. Meglio una cosa sola, vera: si corregge la frase e si
+rilegge.
 
 Chi legge la frase è in due. Il lettore a regole (`describe_lexicon`) c'è
 sempre. Quello a modello (`describe_llm`) c'è con la chiave API
@@ -21,9 +27,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt, Signal
+from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox,
-                               QGridLayout, QHBoxLayout, QInputDialog, QLabel,
-                               QLineEdit, QMessageBox, QPushButton, QSpinBox,
+                               QHBoxLayout, QInputDialog, QLabel, QLineEdit,
+                               QMessageBox, QPushButton, QSpinBox,
                                QVBoxLayout, QWidget)
 
 from core.analysis import api_keys, describe, describe_lexicon
@@ -34,20 +41,20 @@ from core.analysis.describe_llm import (CANDIDATES_PER_PICK, ClaudeCurator,
 from core.analysis.duplicates import song_key
 from core.analysis.mixing import magic_sort
 from core.analysis.shelf import Shelf, valid_name
-from core.analysis.years import FIRST_YEAR, LAST_YEAR
-from core.viz.filters import span
 from core.viz.track_columns import genre_colors
 from qt_app import theme
-from qt_app.pages.common import scrollable
-from qt_app.widgets.range_slider import RangeSlider
 from qt_app.widgets.track_table import TrackTable
 from qt_app.workers import run_in_pool
 
-from .filters import CheckList
 from .library import Library
 from .set_builder import numbered_rows
 
 NO_COLLECTION = "— collections —"
+
+# Cosa dice il criterio prima che una frase sia stata letta: si cerca lo
+# stesso, e quello che esce è la libreria intera — meglio dirlo.
+WAITING_FOR_A_PHRASE = ("<!-- no phrase read yet: searching now takes "
+                        "the whole library -->")
 
 # Dove si ricorda se chiedere a Claude: il modello costa credito, e chi ha
 # la chiave deve poterlo tenere spento senza toglierla.
@@ -72,11 +79,11 @@ def _dim(text: str = "") -> QLabel:
 def playlist_name(phrase: str) -> str:
     """Il nome di scaffale di una frase: la frase, se è un nome di file."""
     name = " ".join(phrase.split())[:60].strip().rstrip(".")
-    return name if valid_name(name) else "Crate Talk"
+    return name if valid_name(name) else "Crate Buddy"
 
 
 class DescribePanel(QWidget):
-    """La casella, il modulo letto e correggibile, la lista trovata."""
+    """La casella, il criterio letto, la lista trovata."""
 
     append_playlist = Signal(list)          # gli INDICI di libreria spuntati
     shelve_playlist = Signal(str, list)     # nome sullo scaffale, indici
@@ -103,6 +110,11 @@ class DescribePanel(QWidget):
         self._reading = False
         self._curating = False
         self._found: list[int] = []
+        # Il criterio: quello che l'ultima lettura ha capito. Vuoto vuol
+        # dire «tutto», ed è quello che si cerca premendo Search senza
+        # aver letto niente.
+        self._query = Query()
+        self._read_by = ""
         self._build(wire_table)
         self._tell_reader()
 
@@ -160,75 +172,29 @@ class DescribePanel(QWidget):
         reader_row.addWidget(self._ask_claude)
         reader_row.addWidget(self._key)
 
-        # --- il modulo, com'è stato letto e come si corregge ---
-        self._how_read = QLabel("")
-        self._how_read.setWordWrap(True)
-        self._how_read.setToolTip(theme.hint(
-            "How the phrase was read, in one line. The fields below are "
-            "that reading: change any of them and search."))
+        # --- il criterio, com'è stato letto ---
+        # Si LEGGE, non si tocca. C'erano dei campi al suo posto — anni,
+        # generi, mood, tempo — che si potevano correggere a mano, ma
+        # contavano solo alla pressione di Search: chi spuntava un genere
+        # e guardava la tabella vedeva una lista che quel genere non lo
+        # aveva mai sentito. Un campo che si lascia toccare e non conta è
+        # una bugia; una frase da riscrivere no. Si corregge la frase e si
+        # rilegge, che è poi il gesto di tutta la scheda.
+        self._criterion = QLabel(WAITING_FOR_A_PHRASE)
+        self._criterion.setFont(
+            QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
+        self._criterion.setWordWrap(True)
+        self._criterion.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse)
+        self._criterion.setToolTip(theme.hint(
+            "The whole of what is searched, and nothing else: what is not "
+            "written here does not apply. <b>Filters</b> say who can "
+            "enter — years, tempo, title words, length. <b>Seeds</b> say "
+            "who enters first: the tracks carrying those labels, with the "
+            "rest of the list filled by what sounds like them. To change "
+            "it, change the phrase and read it again."))
 
-        self._years_on = QCheckBox("Years")
-        self._year_from, self._year_to = QSpinBox(), QSpinBox()
-        for spin in (self._year_from, self._year_to):
-            spin.setRange(FIRST_YEAR, LAST_YEAR)
-        self._year_from.setValue(1980)
-        self._year_to.setValue(1989)
-        self._years_on.toggled.connect(self._year_from.setEnabled)
-        self._years_on.toggled.connect(self._year_to.setEnabled)
-        self._years_on.setChecked(False)
-        self._year_from.setEnabled(False)
-        self._year_to.setEnabled(False)
         self._years_hint = _dim("")
-        years_row = QHBoxLayout()
-        years_row.addWidget(self._years_on)
-        years_row.addWidget(self._year_from)
-        years_row.addWidget(QLabel("–"))
-        years_row.addWidget(self._year_to)
-        years_row.addWidget(self._years_hint, stretch=1)
-
-        self._genres = CheckList("Genres")
-        self._genres.setToolTip(theme.hint(
-            "The genre labels the phrase named. Tracks carrying them are "
-            "the seeds: they enter first, strongest first, and the rest "
-            "of the list is what sounds like them."))
-        self._moods = CheckList("Moods")
-        lists_row = QHBoxLayout()
-        lists_row.addWidget(self._genres, stretch=1)
-        lists_row.addWidget(self._moods, stretch=1)
-
-        self._bpm_on = QCheckBox("BPM")
-        self._bpm = RangeSlider(decimals=0)
-        self._bpm.set_span(describe.BPM_FLOOR, describe.BPM_CEILING)
-        self._bpm_on.toggled.connect(self._bpm.setEnabled)
-        self._bpm_on.setChecked(False)
-        self._bpm.setEnabled(False)
-        self._title_words = QLineEdit()
-        self._title_words.setPlaceholderText("words the title must have, "
-                                             "comma-separated: remix, extended")
-        self._title_words.setClearButtonEnabled(True)
-        self._minutes_on = QCheckBox("At least")
-        self._minutes = QDoubleSpinBox()
-        self._minutes.setRange(0.5, 60.0)
-        self._minutes.setSingleStep(0.5)
-        self._minutes.setDecimals(1)
-        self._minutes.setValue(5.5)
-        self._minutes.setSuffix(" min")
-        self._minutes_on.toggled.connect(self._minutes.setEnabled)
-        self._minutes_on.setChecked(False)
-        self._minutes.setEnabled(False)
-
-        grid = QGridLayout()
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.addWidget(self._bpm_on, 0, 0)
-        grid.addWidget(self._bpm, 0, 1)
-        grid.addWidget(QLabel("Title"), 1, 0)
-        grid.addWidget(self._title_words, 1, 1)
-        minutes_row = QHBoxLayout()
-        minutes_row.setContentsMargins(0, 0, 0, 0)
-        minutes_row.addWidget(self._minutes)
-        minutes_row.addStretch(1)
-        grid.addWidget(self._minutes_on, 2, 0)
-        grid.addLayout(minutes_row, 2, 1)
 
         # --- la ricerca ---
         self._size = QSpinBox()
@@ -306,10 +272,8 @@ class DescribePanel(QWidget):
         box = QVBoxLayout(panel)
         box.addLayout(phrase_row)
         box.addLayout(reader_row)
-        box.addWidget(self._how_read)
-        box.addLayout(years_row)
-        box.addLayout(lists_row, stretch=1)
-        box.addLayout(grid)
+        box.addWidget(self._criterion)
+        box.addWidget(self._years_hint)
         box.addLayout(search_row)
         box.addWidget(self._found_told)
         box.addWidget(self._reasons)
@@ -317,9 +281,12 @@ class DescribePanel(QWidget):
         box.addWidget(self._table, stretch=2)
         box.addLayout(send_row)
 
+        # Nessuna cornice che scorre qui dentro: la scheda sta in Set
+        # Curator, che scorre già per tutte le sue — due barre annidate
+        # sono una barra di troppo.
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
-        outer.addWidget(scrollable(panel))
+        outer.addWidget(panel)
 
     # ------------------------------------------------------------------
     # la libreria
@@ -328,10 +295,6 @@ class DescribePanel(QWidget):
         self._lib = lib
         frame = lib.frame
         self._vocabulary = Vocabulary.of(frame)
-        self._genres.set_options(self._vocabulary.genres, keep=True)
-        self._moods.set_options(self._vocabulary.moods, keep=True)
-        low, high = span(frame, "bpm", describe.BPM_FLOOR, describe.BPM_CEILING)
-        self._bpm.set_span(low, high)
         dated = int(describe.years_of(frame).notna().sum())
         guessed = int(describe.guessed_years(frame).sum())
         self._years_hint.setText(
@@ -414,7 +377,7 @@ class DescribePanel(QWidget):
         key = self._keys.read()
         self._reading = True
         self._read.setEnabled(False)
-        self._how_read.setText("Reading…")
+        self._criterion.setText("<!-- reading… -->")
         reader = self._reader_factory(key)
         vocabulary = self._vocabulary
         run_in_pool(lambda: reader.read(text, vocabulary),
@@ -437,46 +400,22 @@ class DescribePanel(QWidget):
         self._show(describe_lexicon.read(text, self._vocabulary), "the rules")
 
     # ------------------------------------------------------------------
-    # il modulo
+    # il criterio
     # ------------------------------------------------------------------
     def _show(self, query: Query, by: str) -> None:
-        """Il modulo nei campi, e la riga di lettura sopra."""
-        self._how_read.setText(
-            f"<b>Read by {by}:</b> {query.how_read or describe.summary(query)}")
-        self._years_on.setChecked(query.years is not None)
-        if query.years:
-            self._year_from.setValue(query.years[0])
-            self._year_to.setValue(query.years[1])
-        self._genres.set_checked(query.genres)
-        self._moods.set_checked(query.moods)
-        # Le voci lette in cima alle liste: sono quelle da controllare.
-        self._genres.raise_checked()
-        self._moods.raise_checked()
-        self._bpm_on.setChecked(query.bpm is not None)
-        if query.bpm:
-            self._bpm.set_values(*query.bpm)
-        else:
-            self._bpm.reset()
-        self._title_words.setText(", ".join(query.title_words))
-        self._minutes_on.setChecked(query.min_minutes is not None)
-        if query.min_minutes:
-            self._minutes.setValue(query.min_minutes)
+        """La lettura diventa IL criterio: da qui in poi è questo che si
+        cerca, finché non se ne legge un altro."""
+        self._query = query
+        self._read_by = by
+        self._criterion.setText(
+            describe.as_xml(query, phrase=self._phrase.text().strip(),
+                            read_by=by))
 
     def query(self) -> Query:
-        """Il modulo com'è nei campi adesso: è questo che si cerca."""
-        years = ((self._year_from.value(), self._year_to.value())
-                 if self._years_on.isChecked() else None)
-        if years and years[0] > years[1]:
-            years = (years[1], years[0])
-        words = [w.strip() for w in self._title_words.text().split(",")]
-        query = Query(
-            years=years, genres=self._genres.checked(),
-            moods=self._moods.checked(),
-            bpm=self._bpm.values() if self._bpm_on.isChecked() else None,
-            title_words=[w for w in words if w],
-            min_minutes=(self._minutes.value() if self._minutes_on.isChecked()
-                         else None))
-        query.how_read = describe.summary(query)
+        """Il criterio letto per ultimo: è questo che si cerca."""
+        query = self._query
+        if not query.how_read:
+            query.how_read = describe.summary(query)
         return query
 
     # ------------------------------------------------------------------
@@ -582,7 +521,7 @@ class DescribePanel(QWidget):
         wanted = self._picked()
         if not wanted:
             return
-        name = playlist_name(self._phrase.text() or "Crate Talk")
+        name = playlist_name(self._phrase.text() or "Crate Buddy")
         if name in self._shelf.names():
             answer = QMessageBox.question(
                 self, "Save the playlist", f"Overwrite «{name}» on the shelf?",

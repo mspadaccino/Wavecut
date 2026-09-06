@@ -2,7 +2,7 @@
 cartella.
 
 Nessun modello lo misura — l'anno non si sente, si legge — e la mappa fatta
-finora non lo portava. Serve a Crate Talk: «anni 80» è un intervallo di anni,
+finora non lo portava. Serve a Crate Buddy: «anni 80» è un intervallo di anni,
 e senza il numero sul brano resterebbe una parola.
 
 Due sorgenti, in quest'ordine:

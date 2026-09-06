@@ -175,7 +175,7 @@ COLUMN_HELP = {
             "date before the release date) or from a year in brackets in "
             "the file or folder name. With a tilde — ~1983 — it is Claude's "
             "estimate of the original release year, shown only when Claude "
-            "was fairly sure; it is the year the Crate Talk filters read.",
+            "was fairly sure; it is the year the Crate Buddy filters read.",
     "BPM": "Tempo in beats per minute. Read from the file's tags when it "
            "has them — a DJ library usually does — and measured only when "
            "it does not, so it matches what the decks show.",
@@ -229,7 +229,7 @@ def _value(row, column: str):
 def year_text(row) -> str | None:
     """L'anno come si scrive in tabella: «1983» dai tag, «~1983» se è una
     stima di Claude abbastanza sicura — la stessa regola con cui filtra
-    Crate Talk (`describe.years_of`) — e niente altrimenti. Una stima
+    Crate Buddy (`describe.years_of`) — e niente altrimenti. Una stima
     debole non si scrive: sarebbe un numero che sembra un dato."""
     year = _value(row, "year")
     if year is not None:

@@ -1,11 +1,11 @@
-"""Describe: il modulo compilato (`Query`), il vocabolario della libreria e
+"""Crate Buddy: il criterio compilato (`Query`), il vocabolario della libreria e
 la ricerca che applica il modulo alla mappa."""
 
 import numpy as np
 import pandas as pd
 
-from core.analysis.describe import (Match, Query, Vocabulary, pool, search,
-                                    seeds, spread, summary)
+from core.analysis.describe import (Match, Query, Vocabulary, as_xml, pool,
+                                    search, seeds, spread, summary)
 
 
 def library() -> pd.DataFrame:
@@ -77,6 +77,42 @@ def test_the_summary_is_one_readable_line():
                   title_words=["extended", "12\""], min_minutes=5.5)
     assert summary(query) == "1980–1989 · Synth-pop · title has extended / 12\" · ≥ 5.5 min"
     assert summary(Query()) == "everything"
+
+
+def test_the_criterion_in_xml_separates_filters_from_seeds():
+    query = Query(years=(1980, 1989), genres=["Electronic - Synth-pop"],
+                  moods=["happy"], bpm=(118.4, 130.0),
+                  title_words=["extended", "12\""], min_minutes=5.5)
+    assert as_xml(query, phrase="synth pop anni 80", read_by="Claude") == (
+        '<search phrase="synth pop anni 80" read-by="Claude">\n'
+        "  <filters>\n"
+        '    <years from="1980" to="1989"/>\n'
+        '    <bpm from="118" to="130"/>\n'
+        "    <title-words>extended, 12&quot;</title-words>\n"
+        '    <min-length minutes="5.5"/>\n'
+        "  </filters>\n"
+        "  <seeds>\n"
+        "    <genres>Electronic - Synth-pop</genres>\n"
+        "    <moods>happy</moods>\n"
+        "  </seeds>\n"
+        "</search>")
+
+
+def test_a_criterion_that_reads_nothing_says_so_instead_of_lying():
+    # Niente sezioni vuote: o c'è un vincolo, o si dice che non ce n'è.
+    assert as_xml(Query()) == ("<search>\n"
+                               "  <!-- nothing read: every track passes -->\n"
+                               "</search>")
+    assert as_xml(Query(genres=["Rock - New Wave"])) == (
+        "<search>\n  <seeds>\n    <genres>Rock - New Wave</genres>\n"
+        "  </seeds>\n</search>")
+
+
+def test_the_criterion_escapes_what_would_break_the_xml():
+    told = as_xml(Query(title_words=["rock & roll", "<12\">"]),
+                  phrase='the "best" of rock & roll')
+    assert 'phrase="the &quot;best&quot; of rock &amp; roll"' in told
+    assert "<title-words>rock &amp; roll, &lt;12&quot;&gt;</title-words>" in told
 
 
 # --- i filtri duri ---

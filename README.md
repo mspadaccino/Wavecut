@@ -74,7 +74,7 @@ have to make up front:
 |---|---|---|
 | `essentia` | `--without essentia` | map building and tagging — use this if there is no wheel for your Python, and the rest stays alive |
 | `rekordbox` | `--without rekordbox` | writing cues into rekordbox's database; the Cue Finder page says so instead of breaking |
-| `describe` | `--without describe` | reading a Crate Talk phrase with Claude, and the keychain for your API key; the phrase is still read by the rules |
+| `describe` | `--without describe` | reading a Crate Buddy phrase with Claude, and the keychain for your API key; the phrase is still read by the rules |
 
 The Essentia models are a separate download, and you need them before the map
 or the tagging can run. They belong in `~/essentia_models`.
@@ -344,7 +344,7 @@ It is one panel with four tabs, all of them writing into the same playlist:
 **Quick List** (what mixes out of this one), **Chain Maker** with *Auto
 chain* (the section below), [Radio Mix](#radio-mix-a-playlist-from-a-group)
 (a set from a group) and [Crate
-Talk](#crate-talk-a-playlist-from-a-phrase) (a set from a phrase). The
+Talk](#crate-buddy-a-playlist-from-a-phrase) (a set from a phrase). The
 three weights of the transition cost sit **above** the tabs, because the
 Playlist reads them too.
 
@@ -463,9 +463,9 @@ it yet. It is the raw material for two things the app cannot do without
 data: learning the three weights from what you actually pick, and learning
 *what usually comes next* from the sets you build.
 
-### Crate Talk: a playlist from a phrase
+### Crate Buddy: a playlist from a phrase
 
-The **💬 Crate Talk** tab — the last one inside Set Curator — starts
+The **💬 Crate Buddy** tab — the last one inside Set Curator — starts
 from words. Type what you would say to
 another DJ — *synth pop anni 80, solo versioni extended*, *90s eurodance
 floor fillers*, *ballads remixes* — or pick one of the ready-made
@@ -474,14 +474,29 @@ Wave / Synth Pop, ReVibes, Rock, Italo House, Eurodance), and press
 **Read**.
 
 Reading is the whole trick, and it happens **before** any search. The
-phrase becomes a form — years, genres, moods, tempo, words the title must
-carry, minimum length — and the form is shown in fields you can correct:
-*1980–1989 · Synth-pop, New Wave · title has extended*. A wrong reading is
-fixed there, not discovered on the dancefloor. Genres and moods can only be
-labels your library actually carries, in the spelling the models wrote:
-nothing is invented.
+phrase becomes a **criterion**, and the criterion is shown, in full, as the
+search that will run:
 
-Two readers, same form. **The rules** are always there, no key, no network:
+```xml
+<search phrase="synth pop anni 80, solo versioni extended" read-by="Claude">
+  <filters>
+    <years from="1980" to="1989"/>
+    <title-words>extended</title-words>
+  </filters>
+  <seeds>
+    <genres>Electronic - Synth-pop, Rock - New Wave</genres>
+  </seeds>
+</search>
+```
+
+What is not written there does not apply — that is the whole point of
+showing it. **Filters** say who can enter; **seeds** say who enters first.
+A wrong reading is caught here, before the search, not on the dancefloor.
+It is shown, not edited: to change it, change the phrase and read it again.
+Genres and moods can only be labels your library actually carries, in the
+spelling the models wrote: nothing is invented.
+
+Two readers, same criterion. **The rules** are always there, no key, no network:
 they know the decades in Italian and English, the label names however you
 spell them (*synthpop*, *synth-pop*, *Synth Pop*), the macro genres (*rock*
 takes every Rock label), and the words of the trade — *ballad*, *extended*,
@@ -569,7 +584,7 @@ differently.
 | **Auto chain** | the last track of the chain, and a track to land on if you know it | `D` along the row, plus the arc at each position | the cheapest row of N on a corridor between the ends, no track twice | a run from here to there, attached to the chain |
 | **Magic sort** | a group you already have | `D` between every pair | nearest-neighbour path, then 2-opt | the same tracks, reordered |
 | **Radio Mix** | a group (favourites, selection or playlist) | sound only, against the group's centre | one at a time, each pick penalised for resembling the ones before | a set that covers the group without repeating — then magic-sorted |
-| **Crate Talk** | a phrase | years, tempo, length, title words as filters; labels as seeds; then Radio Mix on the fingerprint | reads the phrase into a form you correct, then searches the map | up to N tracks, seeds first, magic-sorted — named after the phrase on the shelf |
+| **Crate Buddy** | a phrase | years, tempo, length, title words as filters; labels as seeds; then Radio Mix on the fingerprint | reads the phrase into a criterion you can see, then searches the map | up to N tracks, seeds first, magic-sorted — named after the phrase on the shelf |
 
 **What magic sort minimises.** The sum of `D` along the row: `D(1st,2nd) +
 D(2nd,3rd) + …`. Not the distance from a seed, not an average — only
@@ -1161,7 +1176,7 @@ that were already processed; `--no-cache` forces re-analysis.
 | `energy_cli.py` | measures the four energy fields — re-reads the audio, resumable |
 | `mood_cli.py` | re-scores valence from the stored embeddings: no audio, minutes instead of hours |
 | `zoo_cli.py` | tries the model zoo's other Discogs-EffNet heads (aggressive, relaxed, party, danceability) — reports only, writes nothing |
-| `years_cli.py` | asks Claude the original release year of the tracks the tags do not date — batch API, half price, once — see [Crate Talk](#crate-talk-a-playlist-from-a-phrase) |
+| `years_cli.py` | asks Claude the original release year of the tracks the tags do not date — batch API, half price, once — see [Crate Buddy](#crate-buddy-a-playlist-from-a-phrase) |
 
 ---
 
@@ -1364,7 +1379,7 @@ Key engine modules (`core/analysis/`):
 | `mixing.py` | Camelot wheel, transition cost (cosine on the embeddings + tempo + key), the point one step ahead for Trend, signed tempo/key shifts, path-drawn playlists, magic sort |
 | `graph_playlist.py` | the chain as a graph: tracks, links, layout on the board, the roster of what comes next, and Auto chain |
 | `arc.py` | the shape of a set: the five chapters with their shares and bands, read by the Chapter Builder and by Auto chain |
-| `describe.py` | Crate Talk: the `Query` form, the library's label vocabulary, and the search — hard filters, labelled seeds, Radio Mix fill |
+| `describe.py` | Crate Buddy: the `Query` criterion, the library's label vocabulary, and the search — hard filters, labelled seeds, Radio Mix fill |
 | `describe_lexicon.py` | the rules reader: decades in two languages, label names however spelled, macro genres, the words of the trade (`ALIASES`) |
 | `describe_llm.py` | the Claude reader: the phrase plus the label vocabulary go out, the form comes back (structured output), readings remembered on disk |
 | `api_keys.py` | the user's API key: environment, system keychain, or a private file |

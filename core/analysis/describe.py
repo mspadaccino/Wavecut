@@ -1,9 +1,9 @@
-"""Crate Talk: da una frase a una playlist, con la libreria che resta a casa.
+"""Crate Buddy: da una frase a una playlist, con la libreria che resta a casa.
 
 «Synth pop anni 80, solo versioni extended» è una domanda in tre pezzi:
 un intervallo di anni, due etichette di genere, una parola da cercare nel
-titolo. Qui c'è il modulo che li tiene — la `Query` — e la ricerca che lo
-applica alla mappa. Chi COMPILA il modulo sta altrove, ed è in due:
+titolo. Qui c'è il criterio che li tiene — la `Query` — e la ricerca che
+lo applica alla mappa. Chi COMPILA il criterio sta altrove, ed è in due:
 `describe_lexicon` lo fa a regole, senza rete; `describe_llm` lo chiede a
 un modello, mandandogli la frase e il vocabolario e niente altro. Tutti
 e due tornano una `Query`, e da lì in poi la strada è una sola.
@@ -189,6 +189,59 @@ def summary(query: Query) -> str:
     if query.min_minutes:
         parts.append(f"≥ {query.min_minutes:g} min")
     return " · ".join(parts) if parts else "everything"
+
+
+def as_xml(query: Query, phrase: str = "", read_by: str = "") -> str:
+    """La domanda com'è, per esteso: la stessa lettura di `summary`, ma
+    aperta riga per riga e divisa fra chi FILTRA e chi fa da SEME.
+
+    È l'unica cosa che si vede del criterio, quindi deve essere l'intera
+    verità: ciò che non è scritto qui non entra nella ricerca. Le due
+    sezioni non sono decorazione — gli anni tengono fuori, i generi fanno
+    entrare per primi, ed è la differenza che spiega perché un «synth pop»
+    porta a casa anche un new wave.
+    """
+    filters, seeds = [], []
+    if query.years:
+        low, high = query.years
+        filters.append(f'<years from="{low}" to="{high}"/>')
+    if query.bpm:
+        filters.append(f'<bpm from="{query.bpm[0]:.0f}" '
+                       f'to="{query.bpm[1]:.0f}"/>')
+    if query.title_words:
+        filters.append("<title-words>"
+                       f"{_escaped(', '.join(query.title_words))}"
+                       "</title-words>")
+    if query.min_minutes:
+        filters.append(f'<min-length minutes="{query.min_minutes:g}"/>')
+    if query.genres:
+        seeds.append(f"<genres>{_escaped(', '.join(query.genres))}</genres>")
+    if query.moods:
+        seeds.append(f"<moods>{_escaped(', '.join(query.moods))}</moods>")
+
+    head = "<search"
+    if phrase:
+        head += f' phrase="{_escaped(phrase)}"'
+    if read_by:
+        head += f' read-by="{_escaped(read_by)}"'
+    lines = [head + ">"]
+    for name, group in (("filters", filters), ("seeds", seeds)):
+        if group:
+            lines.append(f"  <{name}>")
+            lines += [f"    {line}" for line in group]
+            lines.append(f"  </{name}>")
+    if not filters and not seeds:
+        lines.append("  <!-- nothing read: every track passes -->")
+    lines.append("</search>")
+    return "\n".join(lines)
+
+
+def _escaped(text: str) -> str:
+    """Il testo dentro l'XML: le tre entità, e le virgolette perché il
+    testo finisce anche negli attributi (un titolo con le virgolette —
+    12" — spezzerebbe l'attributo)."""
+    return (text.replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
 
 
 # --------------------------------------------------------------------------
