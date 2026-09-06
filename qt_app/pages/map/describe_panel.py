@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSettings, Qt, Signal
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox,
                                QGridLayout, QHBoxLayout, QInputDialog, QLabel,
                                QLineEdit, QMessageBox, QPushButton, QSpinBox,
@@ -46,6 +46,10 @@ from .library import Library
 from .set_builder import numbered_rows
 
 NO_COLLECTION = "— collections —"
+
+# Dove si ricorda se chiedere a Claude: il modello costa credito, e chi ha
+# la chiave deve poterlo tenere spento senza toglierla.
+ASK_CLAUDE_KEY = "describe/ask_claude"
 
 # Le collezioni pronte: le frasi che il lessico conosce per nome. Si
 # leggono senza chiave e senza rete, e servono anche da esempio di cosa
@@ -76,12 +80,14 @@ class DescribePanel(QWidget):
 
     def __init__(self, wire_table, shelf: Shelf | None = None,
                  readings: Readings | None = None, reader_factory=None,
-                 keys=api_keys, parent=None) -> None:
+                 keys=api_keys, settings: QSettings | None = None,
+                 parent=None) -> None:
         super().__init__(parent)
         self._lib: Library | None = None
         self._vocabulary = Vocabulary()
         self._shelf = shelf or Shelf()
         self._readings = readings or Readings()
+        self._settings = settings or QSettings(*theme.SETTINGS)
         # Come si costruisce il lettore a modello da una chiave: si passa
         # dai test, che un modello non lo chiamano.
         self._reader_factory = reader_factory or (
@@ -125,6 +131,16 @@ class DescribePanel(QWidget):
         phrase_row.addWidget(self._read)
 
         self._reader_told = _dim("")
+        self._ask_claude = QCheckBox("Ask Claude")
+        self._ask_claude.setToolTip(theme.hint(
+            "Whether a phrase is sent to Claude at all. Untick it and the "
+            "rules read every phrase, key or no key, and nothing is spent: "
+            "for a night without credit, or for phrases the rules already "
+            "know. Remembered for next time."))
+        self._ask_claude.setChecked(
+            str(self._settings.value(ASK_CLAUDE_KEY, "true")).lower()
+            != "false")
+        self._ask_claude.toggled.connect(self._on_ask_claude)
         self._key = QPushButton("🔑 API key…")
         self._key.setToolTip(theme.hint(
             "Your Anthropic API key, kept in the system keychain. It "
@@ -133,6 +149,7 @@ class DescribePanel(QWidget):
         self._key.clicked.connect(self._on_key)
         reader_row = QHBoxLayout()
         reader_row.addWidget(self._reader_told, stretch=1)
+        reader_row.addWidget(self._ask_claude)
         reader_row.addWidget(self._key)
 
         # --- il modulo, com'è stato letto e come si corregge ---
@@ -305,10 +322,22 @@ class DescribePanel(QWidget):
     # ------------------------------------------------------------------
     # chi legge
     # ------------------------------------------------------------------
+    def asks_claude(self) -> bool:
+        """Se una frase va a Claude: con una chiave, e con la spunta."""
+        return self._ask_claude.isChecked() and bool(self._keys.read())
+
+    def _on_ask_claude(self, on: bool) -> None:
+        self._settings.setValue(ASK_CLAUDE_KEY, "true" if on else "false")
+        self._tell_reader()
+
     def _tell_reader(self, trouble: str | None = None) -> None:
         key = self._keys.read()
         if trouble:
             self._reader_told.setText(f"⚠️ {trouble} Read by the rules.")
+        elif key and not self._ask_claude.isChecked():
+            self._reader_told.setText(
+                "Phrases are read by the rules: Claude is off, nothing is "
+                "spent. Tick «Ask Claude» to use your key.")
         elif key:
             self._reader_told.setText(
                 f"Phrases are read by Claude · key in {self._keys.where()}")
@@ -349,11 +378,11 @@ class DescribePanel(QWidget):
         if remembered is not None:
             self._show(remembered.cleaned(self._vocabulary), "memory")
             return
-        key = self._keys.read()
-        if not key:
+        if not self.asks_claude():
             self._show(describe_lexicon.read(text, self._vocabulary),
                        "the rules")
             return
+        key = self._keys.read()
         self._reading = True
         self._read.setEnabled(False)
         self._how_read.setText("Reading…")

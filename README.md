@@ -488,7 +488,9 @@ leaves the machine is the phrase and the list of label names your library
 uses — never a track, a title or a file name. Every reading is remembered,
 so the same phrase is never paid twice; and when the network is down, the
 key is wrong or the credit is gone, the rules take over and one line says
-so. No dialog, no feature that vanishes.
+so. No dialog, no feature that vanishes. Untick **Ask Claude** and nothing
+is sent at all, key or no key: the rules read every phrase and nothing is
+spent — the choice is remembered.
 
 **Search** then runs here, on the map. The hard filters — years, tempo,
 length, title words — decide who can enter. The labels decide who enters

@@ -12,6 +12,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import numpy as np
 import pandas as pd
+from PySide6.QtCore import QSettings
 
 from core.analysis.describe import Query
 from core.analysis.describe_llm import Readings, ReadingFailed
@@ -103,7 +104,9 @@ def _panel(qtbot, tmp_path, monkeypatch, keys=None, reader=None):
         wire_table=lambda table: None, shelf=Shelf(tmp_path / "shelf"),
         readings=Readings(tmp_path / "readings.json"),
         reader_factory=(lambda key: reader) if reader else None,
-        keys=keys or _Keys())
+        keys=keys or _Keys(),
+        settings=QSettings(str(tmp_path / "settings.ini"),
+                           QSettings.Format.IniFormat))
     qtbot.addWidget(panel)
     panel.set_library(lib)
     return panel
@@ -154,6 +157,24 @@ def test_with_a_key_claude_reads_and_the_reading_is_remembered(qtbot, tmp_path, 
     panel._on_read()                                    # la stessa frase
     assert reader.calls == 1                            # non si ripaga
     assert "Read by memory" in panel._how_read.text()
+
+
+def test_claude_can_be_switched_off_with_the_key_still_there(qtbot, tmp_path, monkeypatch):
+    reader = _Reader(Query(years=(1990, 1999), how_read="from the model"))
+    panel = _panel(qtbot, tmp_path, monkeypatch, keys=_Keys("sk-test"),
+                   reader=reader)
+    panel._ask_claude.setChecked(False)
+    assert "nothing is spent" in panel._reader_told.text()
+    panel._phrase.setText("90s")
+    panel._on_read()
+    assert reader.calls == 0                            # niente credito speso
+    assert "Read by the rules" in panel._how_read.text()
+    assert panel.query().years == (1990, 1999)
+    # La scelta si ricorda: un pannello nuovo sulle stesse impostazioni
+    # nasce spento.
+    again = _panel(qtbot, tmp_path, monkeypatch, keys=_Keys("sk-test"),
+                   reader=reader)
+    assert not again._ask_claude.isChecked()
 
 
 def test_when_the_model_fails_the_rules_take_over_and_say_so(qtbot, tmp_path, monkeypatch):

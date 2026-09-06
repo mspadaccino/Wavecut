@@ -94,7 +94,7 @@ DARK = True
 BACKGROUND = PLOT = RAISED = INK = HOVER = BAR_HOVER = WARN = OK = ""
 SELECTED_ROW = PLAYING_ROW = TWIN_NAME_ROW = TWIN_SOUND_ROW = QColor()
 
-_SETTINGS = ("DjCaddy", "DjCaddy")
+SETTINGS = ("DjCaddy", "DjCaddy")
 
 
 class _Bus(QObject):
@@ -283,7 +283,7 @@ def _dress(app: QApplication) -> None:
 
 def apply_theme(app: QApplication) -> None:
     """Veste l'applicazione col tema scelto l'ultima volta."""
-    use(QSettings(*_SETTINGS).value("theme", "dark") != "light")
+    use(QSettings(*SETTINGS).value("theme", "dark") != "light")
     _dress(app)
 
 
@@ -297,7 +297,7 @@ def set_dark(dark: bool) -> None:
     if bool(dark) == DARK:
         return
     use(dark)
-    QSettings(*_SETTINGS).setValue("theme", "dark" if DARK else "light")
+    QSettings(*SETTINGS).setValue("theme", "dark" if DARK else "light")
     app = QApplication.instance()
     if app is not None:
         _dress(app)
