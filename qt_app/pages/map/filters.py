@@ -114,6 +114,17 @@ class CheckList(QWidget):
     def clear_checks(self) -> None:
         self.set_checked([])
 
+    def raise_checked(self) -> None:
+        """Le spuntate in cima, nell'ordine in cui erano; le altre sotto,
+        nel loro. Serve dove una lettura spunta quattro voci su
+        quattrocento: cercarle in fondo alla lista non è un lavoro."""
+        names = [self._list.item(i).text() for i in range(self._list.count())]
+        wanted = set(self.checked())
+        ordered = [n for n in names if n in wanted] + \
+            [n for n in names if n not in wanted]
+        if ordered != names:
+            self.set_options(ordered, keep=True)
+
     def set_checked(self, names: list[str]) -> None:
         """Spuntate queste e nessun'altra, in silenzio."""
         wanted = set(names)

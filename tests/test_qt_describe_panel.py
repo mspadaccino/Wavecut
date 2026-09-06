@@ -189,6 +189,19 @@ def test_when_the_model_fails_the_rules_take_over_and_say_so(qtbot, tmp_path, mo
     assert panel._read.isEnabled()
 
 
+def test_the_labels_a_reading_ticks_come_to_the_top_of_their_lists(qtbot, tmp_path, monkeypatch):
+    panel = _panel(qtbot, tmp_path, monkeypatch)
+    listed = lambda picker: [picker._list.item(i).text()   # noqa: E731
+                             for i in range(picker._list.count())]
+    assert listed(panel._genres)[0] == "Electronic - Synth-pop"   # il più frequente
+    panel._phrase.setText("new wave, dark")
+    panel._on_read()
+    assert listed(panel._genres)[0] == "Rock - New Wave"
+    assert panel._genres.checked() == ["Rock - New Wave"]
+    assert listed(panel._moods)[0] == "dark"
+    assert set(listed(panel._genres)) == set(panel._vocabulary.genres)   # niente perso
+
+
 def test_the_form_is_the_query_and_can_be_corrected_by_hand(qtbot, tmp_path, monkeypatch):
     panel = _panel(qtbot, tmp_path, monkeypatch)
     panel._phrase.setText("80s")
