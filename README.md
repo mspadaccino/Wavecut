@@ -537,6 +537,12 @@ tracks would go and what it would cost; `--submit --limit 200` is the trial;
 lot is remembered on disk next to the map. Measured on a real library:
 about ten dollars for forty thousand tracks with Sonnet.
 
+With a key there is nothing to run at all: tick **Ask Claude the year of
+tracks that have none** in ⚙️ Map settings and the map job asks at its end,
+in groups of forty, for the tracks it has just added — cents for a night's
+worth of new tracks, at the regular price rather than the batch one. From
+the terminal it is `map_cli.py … --guess-years`.
+
 There is also a way that costs nothing but your time, through the Claude
 chat that comes with a subscription: `--export DIR` writes the undated
 tracks into text files of a few hundred lines each, with the instructions

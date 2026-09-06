@@ -30,7 +30,7 @@ from pathlib import Path
 
 import numpy as np
 
-from core.analysis import energy, mood_scale, titles, years
+from core.analysis import api_keys, energy, mood_scale, titles, year_guess, years
 from core.analysis.essentia_tags import available, missing_models
 from core.analysis.map_job import DEFAULT_MAP_STATE_FILE, run_job
 from core.analysis.map_profile import ProfileSettings, default_workers
@@ -67,6 +67,37 @@ def reproject(store_dir: Path, settings: ProjectionSettings) -> None:
     t0 = time.time()
     store.set_coords(project(store.embeddings, settings))
     print(f"Fatto in {_human(time.time() - t0)}.")
+
+
+def guess_years(store_dir: Path) -> None:
+    """La coda del job per chi ha la chiave: i brani appena entrati senza
+    anno lo chiedono a Claude, a gruppi, e nessun backfill resta da fare.
+    Senza chiave o senza rete si dice e si va avanti: restano da chiedere.
+    """
+    store = MapStore.load(store_dir)
+    todo = len(year_guess.candidates(store.rows))
+    if not todo:
+        print("Anni: ogni brano ne ha uno, dai tag o da Claude.")
+        return
+    key = api_keys.read()
+    if not key:
+        print(f"Anni: {todo:,} brani senza, ma nessuna chiave API "
+              "(🔑 in Describe): restano da chiedere.")
+        return
+    try:
+        import anthropic
+    except ImportError:
+        print("Anni: manca il pacchetto `anthropic` (poetry install --with "
+              "describe): restano da chiedere.")
+        return
+    print(f"Chiedo a Claude l'anno di {todo:,} brani…", flush=True)
+    got = year_guess.ask(anthropic.Anthropic(api_key=key), store,
+                         on_progress=lambda n, of: (
+                             sys.stdout.write(f"\r  {n:,}/{of:,}"),
+                             sys.stdout.flush()))
+    print(f"\n  chiesti {got.asked:,} · datati {got.dated:,}"
+          + (f" · fermato: {got.trouble} — il resto resta da chiedere"
+             if got.trouble else ""))
 
 
 def fields(store: MapStore) -> None:
@@ -159,6 +190,9 @@ def main() -> None:
                         help="Cartella della mappa")
     parser.add_argument("--project", action="store_true",
                         help="Ricalcola la proiezione UMAP a fine job")
+    parser.add_argument("--guess-years", action="store_true",
+                        help="A fine job chiede a Claude l'anno dei brani "
+                             "che non lo hanno dai tag (serve la chiave API)")
     parser.add_argument("--project-only", action="store_true",
                         help="Solo la proiezione, senza analizzare niente")
     parser.add_argument("--relocate", nargs=2, metavar=("VECCHIO", "NUOVO"),
@@ -265,22 +299,27 @@ def main() -> None:
         for e in state.errors[:5]:
             print(f"    {Path(e['file']).name[:60]} — {e['error'][:70]}")
 
-    if args.project:
+    if args.guess_years or args.project:
         # La pagina legge lo stato su file per sapere se il job sta ancora
         # lavorando (`state.running`), e ricarica la mappa non appena non lo
-        # è più. La riproiezione è lo stesso job, non un lavoro a parte: se
-        # lo stato dicesse già "finito" da qui, la pagina si ricaricherebbe
-        # subito, prima che `coords.npy` abbia le posizioni dei brani appena
-        # aggiunti — e siccome quel ricaricamento è un colpo solo, nessuno
-        # gliene manda un secondo quando la proiezione finisce davvero.
+        # è più. Gli anni da Claude e la riproiezione sono lo stesso job,
+        # non lavori a parte: se lo stato dicesse già "finito" da qui, la
+        # pagina si ricaricherebbe subito, prima che `coords.npy` abbia le
+        # posizioni dei brani appena aggiunti — e siccome quel ricaricamento
+        # è un colpo solo, nessuno gliene manda un secondo dopo.
         state.finished_at = None
-        state.current = "proiezione UMAP…"
-        state.save(args.state_file)
-        reproject(args.store, projection)
+        if args.guess_years:
+            state.current = "anni da Claude…"
+            state.save(args.state_file)
+            guess_years(args.store)
+        if args.project:
+            state.current = "proiezione UMAP…"
+            state.save(args.state_file)
+            reproject(args.store, projection)
         state.finished_at = time.time()
         state.current = ""
         state.save(args.state_file)
-    elif state.written:
+    if not args.project and state.written:
         print("\n  La mappa ha brani nuovi senza coordinate: "
               "`--project-only` (o il pulsante nella pagina) le calcola.")
     sys.exit(1 if state.failed and not state.written else 0)

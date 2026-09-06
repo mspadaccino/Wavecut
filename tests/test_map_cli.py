@@ -111,3 +111,56 @@ def test_prune_refuses_when_the_library_is_not_mounted(tmp_path, monkeypatch):
     assert exc.value.code == 2
 
     assert len(MapStore.load(store_dir)) == 1
+
+
+def test_guess_years_runs_inside_the_job_and_only_with_a_key(tmp_path, monkeypatch, capsys):
+    import map_cli
+    from core.analysis.map_store import MapStore
+
+    folder = tmp_path / "brani"
+    folder.mkdir()
+    state_file = tmp_path / "stato.json"
+    fake_state = JobState(pid=os.getpid(), folder=str(folder), total=1,
+                          done=1, written=1, started_at=100.0)
+
+    def fake_run_job(*args, **kwargs):
+        fake_state.finished_at = 105.0
+        fake_state.save(state_file)
+        return fake_state
+
+    seen = []
+    monkeypatch.setattr(map_cli, "run_job", fake_run_job)
+    monkeypatch.setattr(map_cli, "available", lambda: True)
+    monkeypatch.setattr(map_cli, "missing_models", lambda: [])
+    monkeypatch.setattr(map_cli.year_guess, "candidates", lambda rows: [0, 1])
+    monkeypatch.setattr(map_cli.MapStore, "load",
+                        classmethod(lambda cls, d=None: MapStore(
+                            directory=tmp_path / "map", rows=[],
+                            embeddings=None)))
+    monkeypatch.setattr(map_cli.api_keys, "read", lambda: None)
+    monkeypatch.setattr(sys, "argv", [
+        "map_cli.py", str(folder), "--guess-years",
+        "--state-file", str(state_file), "--store", str(tmp_path / "map")])
+    with pytest.raises(SystemExit):
+        map_cli.main()
+    out = capsys.readouterr().out
+    assert "nessuna chiave API" in out                  # senza chiave, si dice
+    assert not load_map_state(state_file).running       # e il job finisce lo stesso
+
+    # Con la chiave, si chiede — dentro la finestra in cui il job è ancora
+    # "in corso" per la pagina.
+    monkeypatch.setattr(map_cli.api_keys, "read", lambda: "sk-test")
+
+    def fake_ask(client, store, on_progress=None):
+        seen.append(load_map_state(state_file).running)
+        return map_cli.year_guess.Asked(asked=2, dated=1)
+
+    monkeypatch.setattr(map_cli.year_guess, "ask", fake_ask)
+    import types
+    monkeypatch.setitem(sys.modules, "anthropic",
+                        types.SimpleNamespace(Anthropic=lambda api_key: object()))
+    with pytest.raises(SystemExit):
+        map_cli.main()
+    assert seen == [True]
+    assert "datati 1" in capsys.readouterr().out
+    assert not load_map_state(state_file).running

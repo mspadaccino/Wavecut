@@ -218,3 +218,44 @@ def test_import_writes_the_answers_by_file_name(tmp_path):
     assert store.rows[1]["year_guess"] is None
     assert "year_guess" not in store.rows[3]            # l'altro file non è arrivato
     assert year_guess.import_answer(store, lot, "nope", "1 | 1983 | 0.9") == -1
+
+
+# --- subito, a gruppi ---
+
+class _Messages:
+    def __init__(self, answers, trouble_at: int | None = None) -> None:
+        self.answers, self.trouble_at, self.calls = answers, trouble_at, 0
+
+    def create(self, **params):
+        self.calls += 1
+        if self.trouble_at is not None and self.calls > self.trouble_at:
+            raise ConnectionError("no network")
+        listed = params["messages"][0]["content"].splitlines()
+        text = json.dumps({"tracks": [
+            {"id": n + 1, "year": self.answers.get(l.split(" | ")[1].replace("file: ", ""), 1990),
+             "confidence": 0.8} for n, l in enumerate(listed)]})
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)])
+
+
+def test_ask_dates_the_undated_in_groups_and_writes_them(tmp_path):
+    store = _store(tmp_path)
+    client = SimpleNamespace(messages=_Messages({"a": 1983, "b": None}))
+    told = []
+    got = year_guess.ask(client, store, per_request=3,
+                         on_progress=lambda n, of: told.append((n, of)))
+    assert (got.asked, got.dated, got.trouble) == (4, 3, "")
+    assert client.messages.calls == 2 and told == [(3, 4), (4, 4)]
+    again = MapStore.load(store.directory)
+    assert again.rows[0]["year_guess"] == 1983
+    assert again.rows[1]["year_guess"] is None
+    assert again.rows[2]["year_guess"] == 1990
+    assert again.rows[4]["year"] == 1990 and "year_guess" not in again.rows[4]
+    assert year_guess.candidates(again.rows) == []
+
+
+def test_ask_stops_at_the_first_trouble_and_keeps_what_it_has(tmp_path):
+    store = _store(tmp_path)
+    client = SimpleNamespace(messages=_Messages({}, trouble_at=1))
+    got = year_guess.ask(client, store, per_request=3)
+    assert got.asked == 3 and got.trouble.startswith("ConnectionError")
+    assert year_guess.candidates(MapStore.load(store.directory).rows) == [3]

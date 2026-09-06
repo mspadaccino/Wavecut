@@ -401,3 +401,58 @@ def import_answer(store, lot: Lot, name: str, text: str) -> int:
     numbered = {n + 1: at_path[p] for n, p in enumerate(paths) if p in at_path}
     dated = apply(store.rows, numbered, parse_chat_answer(text))
     return dated
+
+
+# --------------------------------------------------------------------------
+# subito, a gruppi: la coda del job della mappa
+# --------------------------------------------------------------------------
+#
+# Chi ha la chiave non fa backfill: alla fine del job, i brani appena
+# entrati senza anno si chiedono a Claude a gruppi di quaranta con l'API
+# normale, sincrona — a listino pieno, ma per i brani nuovi di una serata
+# sono centesimi, e la risposta arriva prima che la mappa si ricarichi.
+
+@dataclass
+class Asked:
+    asked: int = 0         # brani mandati
+    dated: int = 0         # brani che hanno ricevuto un anno
+    trouble: str = ""      # perché ci si è fermati, se ci si è fermati
+
+
+def ask(client, store, model: str = DEFAULT_MODEL,
+        per_request: int = PER_REQUEST, limit: int = 0,
+        on_progress=None) -> Asked:
+    """Chiede l'anno dei brani senza, a gruppi, e lo scrive sulle righe.
+
+    Al primo guasto si ferma e lo dice: i brani non ancora chiesti non
+    portano il campo e restano da chiedere alla prossima volta, o al
+    batch, o alla chat. Le righe si riscrivono alla fine, e ogni dieci
+    gruppi: un job interrotto a metà tiene quello che ha.
+    """
+    todo = candidates(store.rows)
+    if limit > 0:
+        todo = todo[:limit]
+    out = Asked()
+    if not todo:
+        return out
+    rows = store.rows
+    groups = chunks(todo, per_request)
+    for n, positions in enumerate(groups):
+        params = request(f"now-{n}", rows, positions, model)["params"]
+        try:
+            response = client.messages.create(**params)
+        except Exception as trouble:                    # noqa: BLE001
+            out.trouble = f"{type(trouble).__name__}: {trouble}"[:200]
+            break
+        text = next((b.text for b in response.content if b.type == "text"), "")
+        answers = parse_answer(text)
+        numbered = {k + 1: i for k, i in enumerate(positions)}
+        out.dated += apply(rows, numbered, answers)
+        out.asked += len(positions)
+        if on_progress:
+            on_progress(out.asked, len(todo))
+        if (n + 1) % 10 == 0:
+            store.rewrite()
+    if out.asked:
+        store.rewrite()
+    return out
