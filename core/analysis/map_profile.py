@@ -56,6 +56,7 @@ from .energy import INGREDIENTS as ENERGY_FIELDS
 from .energy import measure as measure_energy
 from .mixing import to_camelot
 from . import mood_scale
+from .years import year_of
 
 # Il modello vuole 16 kHz, ma il file si legge a 44100: a 16 kHz il tempo e
 # la tonalità escono sbagliati (misurato su un disco a 124 BPM: 86,5 BPM e
@@ -129,6 +130,9 @@ class TrackProfile:
     # su disco, e con nomi tipo "Track 08.mp3" e' tutto cio' che dice.
     title: str = ""
     artist: str = ""
+    # L'anno, dai tag o dal nome del file (`years.year_of`): l'unica
+    # misura che non si sente, e l'unica su cui «anni 80» può filtrare.
+    year: int | None = None
     bpm: float | None = None
     camelot: str | None = None
     key: str | None = None
@@ -163,6 +167,7 @@ class TrackProfile:
             "name": self.path.name,
             "title": self.title,
             "artist": self.artist,
+            "year": self.year,
             "folder": str(self.path.parent),
             "duration": round(self.duration, 1),
             "bpm": round(self.bpm, 1) if self.bpm else None,
@@ -466,6 +471,7 @@ class ProfileAnalyzer:
         if settings.trust_tags:
             profile.bpm, profile.key = read_tag_tempo_key(path)
         profile.title, profile.artist = read_tag_title_artist(path)
+        profile.year = year_of(path)
         rhythm_start = int(rhythm_offset(duration, settings) * ANALYSIS_RATE)
         middle = (audio[rhythm_start:
                         rhythm_start + int(settings.rhythm_seconds * ANALYSIS_RATE)]
