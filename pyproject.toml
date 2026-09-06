@@ -39,6 +39,14 @@ pyrekordbox = "^0.4.4"
 [tool.poetry.group.essentia.dependencies]
 essentia-tensorflow = { version = "*", allow-prereleases = true }
 
+# Describe a modello (core/analysis/describe_llm.py): la frase a Claude, il
+# modulo indietro. Gruppo a sé come rekordbox: senza, Describe legge a
+# regole e basta, e lo dice. `keyring` tiene la chiave dell'utente nel
+# portachiavi del sistema invece che in un file.
+[tool.poetry.group.describe.dependencies]
+anthropic = "^1.4"
+keyring = "^25.6"
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
 pytest-qt = "^4.5.0"
