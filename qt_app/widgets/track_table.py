@@ -447,7 +447,7 @@ class TrackTable(QTableView):
                FAVOURITE_COLUMN: 30,
                "#": 40, "file": 320, "title": 200, "artist": 160,
                "file A": 300, "file B": 300,
-               "BPM": 52, "key": 52,
+               "year": 56, "BPM": 52, "key": 52,
                "energy": 60, "groove": 64, "emotion": 64, "mood": 120,
                "genres": 240, "cost": 56, "sound": 56, "bpm cost": 66,
                "key cost": 62, "similarity": 72, "copies": 56, "chapter": 84,

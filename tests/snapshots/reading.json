@@ -10,7 +10,8 @@
   "groove": [],
   "key": [],
   "mood": "",
-  "title": null
+  "title": null,
+  "year": null
  },
  "bright": {
   "BPM": 114,
@@ -34,7 +35,8 @@
    "11A"
   ],
   "mood": "Summer \u00b7 Happy",
-  "title": null
+  "title": null,
+  "year": null
  },
  "camelot_junk": [
   "#c7ccd4",
@@ -83,6 +85,7 @@
    "3B"
   ],
   "mood": "Dark \u00b7 Deep",
-  "title": null
+  "title": null,
+  "year": null
  }
 }

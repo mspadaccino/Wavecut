@@ -38,6 +38,7 @@ import colorsys
 import pandas as pd
 
 from core.analysis import energy, mood_scale
+from core.analysis.year_guess import MIN_CONFIDENCE
 
 # I colori dei generi sulla mappa e sulle schede della lavagna. Diciotto:
 # con le etichette foglia — che sono 258, di cui le prime dodici coprono il
@@ -170,6 +171,11 @@ COLUMN_HELP = {
              "Map settings has a button for that.",
     "artist": "The artist as the file's tags spell it. Empty for the same "
               "reasons as the title.",
+    "year": "The year of the recording: from the file's tags (the original "
+            "date before the release date) or from a year in brackets in "
+            "the file or folder name. With a tilde — ~1983 — it is Claude's "
+            "estimate of the original release year, shown only when Claude "
+            "was fairly sure; it is the year the Describe filters read.",
     "BPM": "Tempo in beats per minute. Read from the file's tags when it "
            "has them — a DJ library usually does — and measured only when "
            "it does not, so it matches what the decks show.",
@@ -218,6 +224,22 @@ def _value(row, column: str):
         return None
     value = row[column]
     return value if pd.notna(value) and value != "" else None
+
+
+def year_text(row) -> str | None:
+    """L'anno come si scrive in tabella: «1983» dai tag, «~1983» se è una
+    stima di Claude abbastanza sicura — la stessa regola con cui filtra
+    Describe (`describe.years_of`) — e niente altrimenti. Una stima
+    debole non si scrive: sarebbe un numero che sembra un dato."""
+    year = _value(row, "year")
+    if year is not None:
+        return f"{int(year)}"
+    guess = _value(row, "year_guess")
+    confidence = _value(row, "year_guess_conf")
+    if guess is not None and confidence is not None \
+            and float(confidence) >= MIN_CONFIDENCE:
+        return f"~{int(guess)}"
+    return None
 
 
 def _pill(value) -> list[str]:
@@ -282,6 +304,7 @@ def reading(row, common: dict[str, int]) -> dict:
         # mancare o mentire.
         "title": _value(row, "title"),
         "artist": _value(row, "artist"),
+        "year": year_text(row),
         "BPM": round(bpm) if bpm is not None else None,
         "key": _pill(_value(row, "camelot")),
         "energy": _pill(energy_level(_value(row, "energy"))),
@@ -301,8 +324,8 @@ def reading(row, common: dict[str, int]) -> dict:
 # brano, come suona, da dove viene. Le tabelle che ci aggiungono qualcosa di
 # proprio — un costo, uno scarto, un numero d'ordine — se lo infilano dove
 # serve invece di riscrivere tutta la fila.
-READING_ORDER = ["file", "title", "artist", "BPM", "key", "energy", "groove",
-                 "emotion", "mood", "genres", "folder"]
+READING_ORDER = ["file", "title", "artist", "year", "BPM", "key", "energy",
+                 "groove", "emotion", "mood", "genres", "folder"]
 
 
 def genre_colors(frame: pd.DataFrame, shown, dark: bool) -> dict[str, str]:

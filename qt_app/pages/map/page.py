@@ -485,13 +485,13 @@ class MapPage(QWidget):
         """Il conteggio sulle due linguette che tengono una lista: si legge
         da fuori, senza aprire — come già fa `_retitle` di Build a set per
         le sue tre schede."""
-        # La linguetta porta il nome della playlist sul tavolo: fra dieci
-        # scalette di una serata si deve vedere quale si sta toccando.
-        name = f"🎵 {self._playlist.current_name()}"
+        # La linguetta porta il nome della playlist sul tavolo e quanti
+        # brani ha: fra dieci scalette di una serata si deve vedere quale si
+        # sta toccando, e lo zero si scrive — una playlist vuota è un fatto.
         self._panels.setTabText(
             self._panels.indexOf(self._playlist),
-            f"{name} ({len(self._state.playlist)})"
-            if self._state.playlist else name)
+            f"{PLAYLIST_TAB_TITLE}: {self._playlist.current_name()} "
+            f"({len(self._state.playlist)})")
         self._panels.setTabText(
             self._panels.indexOf(self._favourites),
             f"{FAVOURITES_TAB_TITLE} ({len(self._state.favourites)})"

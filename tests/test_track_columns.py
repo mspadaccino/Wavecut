@@ -102,12 +102,23 @@ def test_a_genre_that_only_the_shown_rows_carry_is_still_named():
     assert "Rock - Prog" in colors
 
 
+def test_the_year_is_the_tag_or_a_sure_estimate_with_a_tilde():
+    from core.viz.track_columns import year_text
+    assert year_text({"year": 1983.0}) == "1983"
+    assert year_text({"year": None, "year_guess": 1983, "year_guess_conf": 0.9}) == "~1983"
+    assert year_text({"year": None, "year_guess": 1983, "year_guess_conf": 0.3}) is None
+    assert year_text({"year": 1990, "year_guess": 1983, "year_guess_conf": 0.9}) == "1990"
+    assert year_text({}) is None
+    assert year_text(_track()).__class__ in (str, type(None))
+    assert READING_ORDER.index("year") == READING_ORDER.index("artist") + 1
+
+
 def test_the_columns_the_tables_actually_ask_for_are_all_covered():
     # I nomi sono quelli che le tabelle passano alle spiegazioni: se se ne
     # aggiunge uno senza spiegazione, questo test lo trova.
     from core.viz.track_columns import COLUMN_HELP
 
-    asked = {"#", "file", "title", "artist", "BPM", "folder", "cost", "sound",
+    asked = {"#", "file", "title", "artist", "year", "BPM", "folder", "cost", "sound",
              "bpm cost", "key cost", "similarity", "copies", "Δbpm", "Δkey",
              "Δgroove"}
     assert asked <= set(COLUMN_HELP)
