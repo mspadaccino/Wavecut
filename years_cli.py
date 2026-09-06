@@ -60,6 +60,29 @@ def _estimate(count: int, model: str) -> str:
     return f"~${usd:.2f}"
 
 
+def _show(rows: list[dict], count: int) -> None:
+    """Le stime a campione, e come si distribuisce la fiducia: è il modo
+    di decidere se il lotto grande vale la spesa."""
+    import random
+
+    asked = [r for r in rows if "year_guess" in r]
+    if not asked:
+        print("Nessuna stima ancora: prima --submit, poi --collect.")
+        return
+    dated = [r for r in asked if r.get("year_guess") is not None]
+    sure = [r for r in dated
+            if (r.get("year_guess_conf") or 0) >= year_guess.MIN_CONFIDENCE]
+    print(f"Chieste {len(asked):,} · con un anno {len(dated):,} · abbastanza "
+          f"sicure (≥ {year_guess.MIN_CONFIDENCE}) {len(sure):,} — solo "
+          "queste filtrano")
+    print("\nA campione (fiducia · anno · brano):")
+    for row in random.Random(0).sample(asked, min(count, len(asked))):
+        year = row.get("year_guess")
+        print(f"  {row.get('year_guess_conf') or 0:.2f} · "
+              f"{year if year is not None else '----'} · "
+              + year_guess.line(0, row)[3:])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="L'anno stimato da Claude per i brani senza anno.")
@@ -77,9 +100,14 @@ def main() -> None:
                         help="I lotti in attesa, e a che punto sono")
     parser.add_argument("--collect", action="store_true",
                         help="Scrive sulla mappa le risposte dei lotti finiti")
+    parser.add_argument("--show", type=int, metavar="N", default=0,
+                        help="Mostra N stime a campione, con la fiducia, per "
+                             "giudicarle a orecchio")
     args = parser.parse_args()
-    if not (args.dry_run or args.submit or args.status or args.collect):
-        parser.error("dimmi cosa fare: --dry-run, --submit, --status o --collect")
+    if not (args.dry_run or args.submit or args.status or args.collect
+            or args.show):
+        parser.error("dimmi cosa fare: --dry-run, --submit, --status, "
+                     "--collect o --show N")
 
     store = MapStore.load(args.store)
     rows = store.rows
@@ -88,6 +116,10 @@ def main() -> None:
     print(f"Mappa: {len(rows):,} brani · con anno dai tag "
           f"{sum(1 for r in rows if r.get('year') is not None):,} · stimati "
           f"{guessed:,} · da chiedere {len(todo):,}")
+
+    if args.show:
+        _show(rows, args.show)
+        return
 
     if args.dry_run:
         count = min(len(todo), args.limit) if args.limit else len(todo)
