@@ -1,6 +1,6 @@
 """Gli appunti: cosa è stato proposto, cosa si è scelto, cosa si è mandato.
 
-Nessuna delle tre schede di Build a set impara da chi la usa: la rosa del
+Nessuna delle tre schede di Set Curator impara da chi la usa: la rosa del
 Chain Maker si calcola con tre pesi messi a mano, e ogni scelta fra i nove
 proposti — uno preso, otto scartati — si perde nel momento in cui viene
 fatta. Questo modulo la trattiene. Non decide niente: scrive una riga per

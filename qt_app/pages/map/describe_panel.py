@@ -1,4 +1,4 @@
-"""La scheda Describe: una frase, e la playlist che le somiglia.
+"""La scheda Crate Talk: una frase, e la playlist che le somiglia.
 
 «Synth pop anni 80, solo versioni extended» si scrive nella casella; la
 frase si LEGGE in un modulo — anni, generi, mood, tempo, parole nel
@@ -72,7 +72,7 @@ def _dim(text: str = "") -> QLabel:
 def playlist_name(phrase: str) -> str:
     """Il nome di scaffale di una frase: la frase, se è un nome di file."""
     name = " ".join(phrase.split())[:60].strip().rstrip(".")
-    return name if valid_name(name) else "Describe"
+    return name if valid_name(name) else "Crate Talk"
 
 
 class DescribePanel(QWidget):
@@ -582,7 +582,7 @@ class DescribePanel(QWidget):
         wanted = self._picked()
         if not wanted:
             return
-        name = playlist_name(self._phrase.text() or "Describe")
+        name = playlist_name(self._phrase.text() or "Crate Talk")
         if name in self._shelf.names():
             answer = QMessageBox.question(
                 self, "Save the playlist", f"Overwrite «{name}» on the shelf?",

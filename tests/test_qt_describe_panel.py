@@ -1,4 +1,4 @@
-"""La scheda Describe: la frase letta nel modulo, il modulo corretto a mano,
+"""La scheda Crate Talk: la frase letta nel modulo, il modulo corretto a mano,
 la ricerca e la playlist sullo scaffale. Gira solo col gruppo `qt`."""
 
 import os
@@ -252,8 +252,8 @@ def test_a_search_that_finds_nothing_says_why(qtbot, tmp_path, monkeypatch):
 def test_playlist_names_come_from_the_phrase():
     from qt_app.pages.map.describe_panel import playlist_name
     assert playlist_name("  synth pop   anni 80 ") == "synth pop anni 80"
-    assert playlist_name("a/b") == "Describe"
-    assert playlist_name("") == "Describe"
+    assert playlist_name("a/b") == "Crate Talk"
+    assert playlist_name("") == "Crate Talk"
 
 
 # --- la cura ---

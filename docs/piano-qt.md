@@ -20,7 +20,7 @@ Scostamenti dal piano, in meglio:
   libreria di rekordbox 6/7** (`core/analysis/rekordbox_write.py`, via
   pyrekordbox in un gruppo poetry a sé — `--without rekordbox` per farne a
   meno), superando il vecchio giro djay Pro/XML;
-- il Chain Maker in Qt si chiama **"Build a set"**;
+- il Chain Maker in Qt si chiama **"Set Curator"**;
 - nota per la Fase 5: al bundle si aggiunge la dipendenza opzionale
   pyrekordbox/sqlcipher, e le pagine che dipendono da gruppi assenti devono
   dirlo invece di rompersi (già così a runtime).

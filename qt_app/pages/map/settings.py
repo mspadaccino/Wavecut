@@ -154,7 +154,7 @@ class SettingsDialog(QDialog):
             "of forty — title, artist, file and folder name, nothing else — "
             "and the original release year comes back as an estimate, with "
             "how sure Claude was. Cents for a night's worth of new tracks, "
-            "on your API key (🔑 in Describe). Without a key the job says "
+            "on your API key (🔑 in Crate Talk). Without a key the job says "
             "so and moves on; years_cli.py can ask later."))
         self._guess_years.setChecked(
             str(self._settings.value(GUESS_YEARS_KEY, "false")).lower()

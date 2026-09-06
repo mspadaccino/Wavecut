@@ -320,7 +320,7 @@
   "file": "The file name. Two tracks can carry the same one, which is why the folder is in the last column.",
   "title": "The title as the file's tags spell it. Empty when the file carries no tags, or when the map has not read them yet \u2014 Map settings has a button for that.",
   "artist": "The artist as the file's tags spell it. Empty for the same reasons as the title.",
-  "year": "The year of the recording: from the file's tags (the original date before the release date) or from a year in brackets in the file or folder name. With a tilde \u2014 ~1983 \u2014 it is Claude's estimate of the original release year, shown only when Claude was fairly sure; it is the year the Describe filters read.",
+  "year": "The year of the recording: from the file's tags (the original date before the release date) or from a year in brackets in the file or folder name. With a tilde \u2014 ~1983 \u2014 it is Claude's estimate of the original release year, shown only when Claude was fairly sure; it is the year the Crate Talk filters read.",
   "BPM": "Tempo in beats per minute. Read from the file's tags when it has them \u2014 a DJ library usually does \u2014 and measured only when it does not, so it matches what the decks show.",
   "folder": "Where the file comes from. In a DJ library the folder often says what the name does not: the compilation, the era, the set it was ripped for.",
   "cost": "How expensive the mix from the seed track into this one is: tempo, key and acoustic distance rolled into one number. Lower is easier. The columns after it break it into its parts.",

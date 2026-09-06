@@ -5,7 +5,7 @@ Radio e dalla Playlist — è la stessa domanda ovunque venga fatta
 (`AppState.favourites`, `TrackTable.favorite_requested`). Qui è anche il
 gesto che porta i preferiti nella scaletta: si spuntano le righe volute e
 "Add selected tracks to playlist" le manda in coda, come ogni altra lista
-di Build a set.
+di Set Curator.
 """
 
 from __future__ import annotations

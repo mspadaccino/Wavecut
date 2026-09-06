@@ -1,4 +1,4 @@
-"""Describe: da una frase a una playlist, con la libreria che resta a casa.
+"""Crate Talk: da una frase a una playlist, con la libreria che resta a casa.
 
 «Synth pop anni 80, solo versioni extended» è una domanda in tre pezzi:
 un intervallo di anni, due etichette di genere, una parola da cercare nel
@@ -39,7 +39,7 @@ from core.analysis.years import FIRST_YEAR, LAST_YEAR
 DEFAULT_SIZE = 100
 
 # Quanto il Radio Mix si allontana da ciò che ha già preso: il valore di
-# default della manopola «Variety» in Build a set.
+# default della manopola «Variety» in Set Curator.
 DEFAULT_VARIETY = 0.5
 
 # Le corse entro cui un tempo ha senso.

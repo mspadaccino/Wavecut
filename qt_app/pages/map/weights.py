@@ -3,8 +3,8 @@
 I tre pesi definiscono `D` — quanto contano suono, tempo e chiave quando si
 dice che due brani mixano — e `D` lo leggono sei cose in due schede
 diverse: Quick List, Chain Maker, Auto chain e il magic sort di Radio Mix in
-Build a set; il magic sort e la colonna «from previous» nella Playlist.
-Finché gli slider stavano dentro Build a set, chi premeva Magic sort sulla
+Set Curator; il magic sort e la colonna «from previous» nella Playlist.
+Finché gli slider stavano dentro Set Curator, chi premeva Magic sort sulla
 Playlist veniva ordinato con pesi che non vedeva. Stanno qui, fuori da
 ogni scheda, perché la posizione di un comando deve dire dove arriva.
 """

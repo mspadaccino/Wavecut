@@ -74,7 +74,7 @@ have to make up front:
 |---|---|---|
 | `essentia` | `--without essentia` | map building and tagging — use this if there is no wheel for your Python, and the rest stays alive |
 | `rekordbox` | `--without rekordbox` | writing cues into rekordbox's database; the Cue Finder page says so instead of breaking |
-| `describe` | `--without describe` | reading a Describe phrase with Claude, and the keychain for your API key; the phrase is still read by the rules |
+| `describe` | `--without describe` | reading a Crate Talk phrase with Claude, and the keychain for your API key; the phrase is still read by the rules |
 
 The Essentia models are a separate download, and you need them before the map
 or the tagging can run. They belong in `~/essentia_models`.
@@ -123,21 +123,25 @@ it. Narrow the picture with the filters — genres, BPM,
 groove, energy — and use the point-size control to read a second quantity off
 the same picture.
 
-### 3 · Build a set
+### 3 · Set Curator
 
-Three ways, and they answer different questions:
+The **🎛️ Set Curator** panel holds them, one tab each, and they answer
+different questions:
 
 - *Put these in the best order.* **Box-select** a group and run **magic
   sort**, or **draw a lasso** across the clusters to plan an arc.
-- *What comes next?* Go to **Build a set** and grow the chain one track at a
+- *What comes next?* Go to **Set Curator** and grow the chain one track at a
   time from the ranked candidates.
 - *How do I get from here to there?* Start the chain and, if you know it,
   name the track to land on, and let **Auto chain** plan the run of tracks
   in between that follows the arc of a set.
 - *More like these.* Star some favourites, or select a group, and let
   **Radio Mix** tune a playlist from the whole group's taste.
+- *I know what I want but not which records.* Say it in words in **Crate
+  Talk** — *synth pop anni 80, solo versioni extended* — and get a playlist
+  named after the phrase.
 
-Both write into the same **playlist**, which is what the **board** draws as
+They all write into the same **playlist**, which is what the **board** draws as
 cards. Export it as **M3U8** or **rekordbox XML**.
 
 ### 4 · Cue a track
@@ -183,9 +187,9 @@ I play next, out of ninety thousand tracks?*
 - **Box-select a group** and let **magic sort** order it: the cheapest path
   that visits every track once — an open travelling-salesman problem, solved
   nearest-neighbour then 2-opt — so each track melts into the next.
-- **Grow a set one track at a time** in [Build a set](#building-a-set).
+- **Grow a set one track at a time** in [Set Curator](#set-curator).
 - **Go from one track to another in N steps** with *Auto chain* and a
-  track to land on, in [Build a set](#building-a-set).
+  track to land on, in [Set Curator](#set-curator).
 - **Tune a playlist from a group** — your favourites, or a lasso — with
   [Radio Mix](#radio-mix-a-playlist-from-a-group).
 - **Export** the result as M3U8 or rekordbox XML.
@@ -315,7 +319,7 @@ own*, not a number on an absolute scale, which is exactly the language a
 set is planned in — an intro lives low, a climax high.
 
 **Chapter** is the menu beside the presets: Intro, Buildup, Tension,
-Climax, Release — the same five [Auto chain](#building-a-set)
+Climax, Release — the same five [Auto chain](#set-curator)
 and the Chapter Builder read. Pick one and the four ranges take that
 chapter's bands, percentiles of your library turned into this library's
 numbers: *Intro* puts BPM in your slowest 15%, energy in the calmest
@@ -330,11 +334,19 @@ looking at the library — `house_intro` is a corner of it *and* how nearness
 is judged inside that corner — and the menu is how you go back to the same
 corner tomorrow. They live in `~/Documents/DjCaddy/presets.json`.
 
-### Building a set
+### Set Curator
 
 Magic sort answers *put these in the best order*. The set builder answers the
 other question — *what comes next?* — one track at a time, which is how a set
 is actually decided.
+
+It is one panel with four tabs, all of them writing into the same playlist:
+**Quick List** (what mixes out of this one), **Chain Maker** with *Auto
+chain* (the section below), [Radio Mix](#radio-mix-a-playlist-from-a-group)
+(a set from a group) and [Crate
+Talk](#crate-talk-a-playlist-from-a-phrase) (a set from a phrase). The
+three weights of the transition cost sit **above** the tabs, because the
+Playlist reads them too.
 
 **Two tables give the orders.** On the left the chain as it stands; on the
 right the candidates that mix out of whichever track you are standing on,
@@ -451,9 +463,10 @@ it yet. It is the raw material for two things the app cannot do without
 data: learning the three weights from what you actually pick, and learning
 *what usually comes next* from the sets you build.
 
-### Describe: a playlist from a phrase
+### Crate Talk: a playlist from a phrase
 
-The **💬 Describe** tab starts from words. Type what you would say to
+The **💬 Crate Talk** tab — the last one inside Set Curator — starts
+from words. Type what you would say to
 another DJ — *synth pop anni 80, solo versioni extended*, *90s eurodance
 floor fillers*, *ballads remixes* — or pick one of the ready-made
 collections in the menu (70s, 80s, 90s, Flash House, Ballads Remixes, New
@@ -556,7 +569,7 @@ differently.
 | **Auto chain** | the last track of the chain, and a track to land on if you know it | `D` along the row, plus the arc at each position | the cheapest row of N on a corridor between the ends, no track twice | a run from here to there, attached to the chain |
 | **Magic sort** | a group you already have | `D` between every pair | nearest-neighbour path, then 2-opt | the same tracks, reordered |
 | **Radio Mix** | a group (favourites, selection or playlist) | sound only, against the group's centre | one at a time, each pick penalised for resembling the ones before | a set that covers the group without repeating — then magic-sorted |
-| **Describe** | a phrase | years, tempo, length, title words as filters; labels as seeds; then Radio Mix on the fingerprint | reads the phrase into a form you correct, then searches the map | up to N tracks, seeds first, magic-sorted — named after the phrase on the shelf |
+| **Crate Talk** | a phrase | years, tempo, length, title words as filters; labels as seeds; then Radio Mix on the fingerprint | reads the phrase into a form you correct, then searches the map | up to N tracks, seeds first, magic-sorted — named after the phrase on the shelf |
 
 **What magic sort minimises.** The sum of `D` along the row: `D(1st,2nd) +
 D(2nd,3rd) + …`. Not the distance from a seed, not an average — only
@@ -669,7 +682,7 @@ Tension, Climax, Release — by how each track's tempo, energy, mood and
 groove fit each part's band, with a fixed share of the set for each; the
 board shades the parts under the cards, and *Apply chapter order* rewrites
 the playlist in that order. It works on a playlist that exists: it labels
-and reorders, it never adds a track. [Auto chain](#building-a-set) is the
+and reorders, it never adds a track. [Auto chain](#set-curator) is the
 same arc used the other way round — the shape first, then the tracks that
 realise it — and the two read one definition, so a run planned with the
 arc comes out already in its chapters.
@@ -1148,7 +1161,7 @@ that were already processed; `--no-cache` forces re-analysis.
 | `energy_cli.py` | measures the four energy fields — re-reads the audio, resumable |
 | `mood_cli.py` | re-scores valence from the stored embeddings: no audio, minutes instead of hours |
 | `zoo_cli.py` | tries the model zoo's other Discogs-EffNet heads (aggressive, relaxed, party, danceability) — reports only, writes nothing |
-| `years_cli.py` | asks Claude the original release year of the tracks the tags do not date — batch API, half price, once — see [Describe](#describe-a-playlist-from-a-phrase) |
+| `years_cli.py` | asks Claude the original release year of the tracks the tags do not date — batch API, half price, once — see [Crate Talk](#crate-talk-a-playlist-from-a-phrase) |
 
 ---
 
@@ -1351,7 +1364,7 @@ Key engine modules (`core/analysis/`):
 | `mixing.py` | Camelot wheel, transition cost (cosine on the embeddings + tempo + key), the point one step ahead for Trend, signed tempo/key shifts, path-drawn playlists, magic sort |
 | `graph_playlist.py` | the chain as a graph: tracks, links, layout on the board, the roster of what comes next, and Auto chain |
 | `arc.py` | the shape of a set: the five chapters with their shares and bands, read by the Chapter Builder and by Auto chain |
-| `describe.py` | Describe: the `Query` form, the library's label vocabulary, and the search — hard filters, labelled seeds, Radio Mix fill |
+| `describe.py` | Crate Talk: the `Query` form, the library's label vocabulary, and the search — hard filters, labelled seeds, Radio Mix fill |
 | `describe_lexicon.py` | the rules reader: decades in two languages, label names however spelled, macro genres, the words of the trade (`ALIASES`) |
 | `describe_llm.py` | the Claude reader: the phrase plus the label vocabulary go out, the form comes back (structured output), readings remembered on disk |
 | `api_keys.py` | the user's API key: environment, system keychain, or a private file |
@@ -1359,7 +1372,7 @@ Key engine modules (`core/analysis/`):
 | `year_guess.py` | the year Claude estimates for the undated tracks: batch requests, answers back onto the rows by path, the lot remembered on disk |
 | `journey.py` | the planner behind Auto chain: from a track to another in N steps — a corridor between the ends, Viterbi over the positions with the arc, no repeats |
 | `radio.py` | Radio Mix: a playlist from a group — split into souls, maximal marginal relevance, drift, negatives |
-| `journal.py` | `choices.jsonl`: one line per choice made in Build a set, for learning later |
+| `journal.py` | `choices.jsonl`: one line per choice made in Set Curator, for learning later |
 | `energy.py` | the four raw energy measures, and the library-wide ranking that turns them into a 1–10 |
 | `mood_scale.py` | the mood words onto one dark→bright axis (valence), by rank or by the model's real weights |
 | `essentia_tags.py`, `tag_job.py` | genre/mood inference and the batch tagging job |

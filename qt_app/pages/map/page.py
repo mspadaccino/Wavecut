@@ -6,7 +6,7 @@ mentre i gesti — seme, gruppo, playlist, catena, proposte, chi suona —
 aggiornano i soli tracciati di contorno via `PlotlyView.set_overlays`, che
 costano millisecondi invece del secondo e mezzo della figura piena.
 
-Chi comanda le tre schede di Build a set segue la regola della pagina
+Chi comanda le schede di Set Curator segue la regola della pagina
 Streamlit: una spunta nella playlist viene prima del seme del riquadro in
 alto — è il gesto più recente — e un clic sulla mappa gliela toglie di
 mano. Il seme in alto resta quello che era, col suo cerchio bianco.
@@ -392,11 +392,21 @@ class MapPage(QWidget):
         self._playlist.shelf_changed.connect(lambda _: self._retitle_panels())
         self._favourites = FavouritesPanel(self._state, self._wire)
         self._favourites.append_playlist.connect(self._on_builder_append)
-        # Describe: una frase, la lettura da correggere, la lista. Scrive
+        # Crate Talk: una frase, la lettura da correggere, la lista. Scrive
         # sullo scaffale della Playlist, per nome, e la porta sul tavolo.
+        # Sta dentro Set Curator, in coda alle sue schede — è un altro modo
+        # di costruire un set, non un'altra pagina — ma si costruisce qui,
+        # perché è qui che si sa dov'è lo scaffale della Playlist.
         self._describe = DescribePanel(self._wire, shelf=self._playlist.shelf)
         self._describe.append_playlist.connect(self._on_builder_append)
         self._describe.shelve_playlist.connect(self._on_describe_shelved)
+        self._builder.add_panel(
+            self._describe, "💬 Crate Talk",
+            "<b>A set from words.</b><br>Say what you would say to a "
+            "record shop — «synth pop anni 80, solo versioni extended» — "
+            "and it is read into a form you correct before searching. Not "
+            "a seed and not a group: a description, answered with a "
+            "playlist named after the phrase.")
         # La vista dello scaffale legge gli stessi file della scheda
         # Playlist e si rifà quando quella scrive o cambia nome.
         self._shelf_view = ShelfPanel(self._playlist.shelf)
@@ -408,8 +418,7 @@ class MapPage(QWidget):
 
         self._panels = QTabWidget()
         self._panels.addTab(self._filters, "🔎 Filters")
-        self._panels.addTab(self._builder, "🎛️ Build a set")
-        self._panels.addTab(self._describe, "💬 Describe")
+        self._panels.addTab(self._builder, "🎛️ Set Curator")
         self._panels.addTab(self._playlist, PLAYLIST_TAB_TITLE)
         self._panels.addTab(self._shelf_view, "📚 Shelf")
         self._panels.addTab(self._favourites, FAVOURITES_TAB_TITLE)
@@ -417,7 +426,7 @@ class MapPage(QWidget):
         self._retitle_panels()
 
         # I pesi del costo stanno SOPRA le schede, fuori da tutte: li legge
-        # Build a set e li legge la Playlist, e un comando che governa due
+        # Set Curator e li legge la Playlist, e un comando che governa due
         # schede non può stare dentro una delle due.
         self._weights = WeightsBar()
         self._weights.changed.connect(self._on_weights)
@@ -483,8 +492,8 @@ class MapPage(QWidget):
 
     def _retitle_panels(self) -> None:
         """Il conteggio sulle due linguette che tengono una lista: si legge
-        da fuori, senza aprire — come già fa `_retitle` di Build a set per
-        le sue tre schede."""
+        da fuori, senza aprire — come già fa `_retitle` di Set Curator per
+        le sue schede."""
         # La linguetta porta il nome della playlist sul tavolo e quanti
         # brani ha: fra dieci scalette di una serata si deve vedere quale si
         # sta toccando, e lo zero si scrive — una playlist vuota è un fatto.
@@ -778,7 +787,7 @@ class MapPage(QWidget):
         self._panels.setCurrentWidget(self._playlist)
 
     def _on_describe_shelved(self, name: str, indices: list[int]) -> None:
-        """La lista di Describe sullo scaffale col nome della frase, e sul
+        """La lista di Crate Talk sullo scaffale col nome della frase, e sul
         tavolo. Se quel nome È la playlist sul tavolo, si riscrive lei."""
         if name == self._playlist.current_name():
             self._playlist.replace(indices)
@@ -790,7 +799,7 @@ class MapPage(QWidget):
         self._panels.setCurrentWidget(self._playlist)
 
     def _on_weights(self) -> None:
-        """Uno slider si è mosso: prima Build a set, che scrive i pesi nel
+        """Uno slider si è mosso: prima Set Curator, che scrive i pesi nel
         costo condiviso, poi la Playlist, che da quel costo rilegge i suoi
         numeri."""
         self._builder.set_weights(*self._weights.weights())

@@ -1,9 +1,12 @@
-"""Build a set: i tre modi di passare dalla mappa a una scaletta.
+"""Set Curator: i modi di passare dalla mappa a una scaletta.
 
 Quick List (cosa ci si mixa sopra), Chain Maker (un brano alla volta) e
 Radio Mix (una playlist da un GRUPPO: i preferiti o il lazo), sopra un pannello
 unico di pesi e "quanti elencare", che sono gli stessi filtri di partenza
-per tutte. C'era una quarta scheda, Sounds like it, che rispondeva "cosa
+per tutte. In coda ce n'è una quarta che non nasce qui — Crate Talk, la
+playlist da una frase — appesa dalla pagina con `add_panel`: si costruisce
+una scaletta anche a parole, e il posto di quella domanda è fra le altre.
+C'era una scheda, Sounds like it, che rispondeva "cosa
 gli somiglia" sui 1280 numeri dell'embedding: da quando il termine sound
 del costo misura lì e non più sulla mappa, è Quick List coi pesi 1, 0, 0,
 e una scheda che si ottiene girando tre manopole non serve. C'era anche il
@@ -299,6 +302,18 @@ class SetBuilderPanel(QWidget):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(scrollable(panel))
+
+    def add_panel(self, panel: QWidget, title: str, told: str) -> None:
+        """Una scheda in più, in coda alle tre: la costruisce la pagina e
+        la appende qui.
+
+        Crate Talk sta dentro Set Curator ma NON si costruisce qui:
+        `describe_panel` importa da questo modulo (`numbered_rows`), quindi
+        importarlo a nostra volta chiuderebbe il cerchio. In coda, perché
+        `_retitle` conta le schede per numero e i primi tre numeri devono
+        restare quelli."""
+        tab = self._tabs.addTab(panel, title)
+        self._tabs.setTabToolTip(tab, theme.hint(told))
 
     def _pick_row(self, table: TrackTable, reset=None) -> QWidget:
         """La riga che governa la lista: scelta in blocco e, dove serve, il

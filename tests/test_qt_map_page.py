@@ -27,6 +27,12 @@ def test_the_map_page_builds_with_every_tab(qtbot, tmp_path, monkeypatch):
     page = MapPage(AppState())
     qtbot.addWidget(page)
     tabs = [page._panels.tabText(i) for i in range(page._panels.count())]
-    assert tabs == ["🔎 Filters", "🎛️ Build a set", "💬 Describe",
+    assert tabs == ["🔎 Filters", "🎛️ Set Curator",
                     "🎵 Playlist: Playlist (0)", "📚 Shelf", "★ Favourites"]
+    # Crate Talk non è più una linguetta di pagina: è l'ultima scheda
+    # DENTRO Set Curator, in coda alle tre che costruiscono un set.
+    inner = [page._builder._tabs.tabText(i)
+             for i in range(page._builder._tabs.count())]
+    assert inner == ["✨ Quick List", "🔗 Chain Maker", "📻 Radio Mix",
+                     "💬 Crate Talk"]
     assert (tmp_path / "Playlists" / "Playlist.m3u8").exists()

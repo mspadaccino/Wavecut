@@ -14,7 +14,7 @@ per cui la tabella è nativa.
 
 Gli scarti "from previous" e il Magic sort leggono il costo CONDIVISO
 della libreria, coi pesi della riga «Transition cost» sopra le schede: gli
-stessi tre di Build a set, perché un set ordinato con pesi che non si
+stessi tre di Set Curator, perché un set ordinato con pesi che non si
 vedono non si capisce.
 """
 
@@ -315,7 +315,7 @@ class PlaylistPanel(QWidget):
         self._shelf = shelf or Shelf()
         self._current = DEFAULT_NAME
         self._lib: Library | None = None
-        # Il costo CONDIVISO della libreria, coi pesi di Build a set: il
+        # Il costo CONDIVISO della libreria, coi pesi di Set Curator: il
         # Magic sort e i numeri in tabella seguono gli stessi slider.
         self._cost: TransitionCost | None = None
         self._chapters: list[list[int]] | None = None
@@ -441,7 +441,7 @@ class PlaylistPanel(QWidget):
         header.addStretch(1)
 
         self._empty = _dim(
-            "Nothing in it yet: pick tracks in Build a set, take them from "
+            "Nothing in it yet: pick tracks in Set Curator, take them from "
             "the disk, or load an existing playlist and keep adding to it.")
 
         self._table = TrackTable(reorderable=True, checkable=True,
@@ -614,7 +614,7 @@ class PlaylistPanel(QWidget):
         self._refresh()
 
     def refresh_costs(self) -> None:
-        """I pesi di Build a set sono cambiati: i costi in tabella e il
+        """I pesi di Set Curator sono cambiati: i costi in tabella e il
         salto peggiore si leggono dal costo condiviso, e vanno riscritti."""
         self._refresh()
 
@@ -646,7 +646,7 @@ class PlaylistPanel(QWidget):
 
     def replace(self, indices: list[int]) -> None:
         """La lista nuova al posto della vecchia — ripulita dei percorsi
-        ripetuti. Le liste di Build a set sono uniche per costruzione, ma
+        ripetuti. Le liste di Set Curator sono uniche per costruzione, ma
         un M3U8 salvato altrove può portare lo stesso file due volte (o due
         righe che il ripiego per nome risolve sullo stesso brano), e una
         playlist col path doppio qui non si governa: la spunta toglie tutte

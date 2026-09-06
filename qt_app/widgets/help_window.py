@@ -4,7 +4,7 @@ Il testo è quello di `core.guide` — il README meno i capitoli sul codice —
 e non una copia scritta a parte: la finestra mostra sempre la guida vera.
 
 Due dettagli meritano una riga. Ai titoli non si va cercando il testo nel
-documento, perché "Build a set" compare anche in mezzo alla prosa: si va per
+documento, perché "Set Curator" compare anche in mezzo alla prosa: si va per
 POSIZIONE, chiedendo a ogni blocco se è un titolo (`headingLevel`), che è
 l'unica domanda che non si può sbagliare. E il salto porta il titolo IN
 CIMA alla vista invece che dove capita: `ensureCursorVisible` da solo lo

@@ -82,7 +82,7 @@ def guess_years(store_dir: Path) -> None:
     key = api_keys.read()
     if not key:
         print(f"Anni: {todo:,} brani senza, ma nessuna chiave API "
-              "(🔑 in Describe): restano da chiedere.")
+              "(🔑 in Crate Talk): restano da chiedere.")
         return
     try:
         import anthropic

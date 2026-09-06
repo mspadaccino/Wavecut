@@ -23,7 +23,7 @@ La via senza API, con la chat di Claude che sta nell'abbonamento:
 
 Manuale, ma gratis. L'app non guida la chat da sola: non si fa.
 
-La chiave è la stessa di Describe (portachiavi di sistema, o la variabile
+La chiave è la stessa di Crate Talk (portachiavi di sistema, o la variabile
 ANTHROPIC_API_KEY). Quello che parte per ogni brano: titolo e artista dai
 tag, nome del file e della cartella. Niente altro.
 """
