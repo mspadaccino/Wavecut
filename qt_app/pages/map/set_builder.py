@@ -1029,7 +1029,7 @@ class SetBuilderPanel(QWidget):
         walk = self._walk()
         self._chain_told.setText(f"<b>The chain — {len(walk)} track(s)</b>")
         table = chain_table(frame, at_path, walk, common)
-        order = ["#", "file", "title", "artist", "BPM", "key", "energy",
+        order = ["#", "file", "title", "artist", "year", "BPM", "key", "energy",
                  "groove", "emotion",
                  "Δbpm", "Δkey", "Δenergy", "Δgroove", "mood", "genres",
                  "folder", "_path"]

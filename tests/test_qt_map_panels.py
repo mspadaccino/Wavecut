@@ -1181,16 +1181,21 @@ def SHOWN_INDEX(column: str) -> int:
 
 
 def test_every_hand_listed_table_carries_the_year_after_the_artist():
-    """Tre tabelle scrivono le loro colonne a mano invece di prendere
-    `READING_ORDER`: la playlist, la Quick List, la rosa. L'anno ci deve
-    stare anche lì, dove l'occhio lo cerca — dopo l'artista, o dopo il
-    file dove l'artista non c'è."""
+    """Alcune tabelle scrivono le loro colonne a mano invece di prendere
+    `READING_ORDER`: la playlist, la Quick List, la catena, la rosa. L'anno
+    ci deve stare anche lì, dove l'occhio lo cerca — dopo l'artista, o dopo
+    il file dove l'artista non si mostra."""
     import re
     from pathlib import Path
 
-    for module, after in (("playlist_panel.py", "artist"),
-                          ("set_builder.py", "artist"),
-                          ("set_builder.py", "file")):
+    found = 0
+    for module in ("playlist_panel.py", "set_builder.py"):
         source = Path("qt_app/pages/map", module).read_text("utf-8")
-        listed = re.findall(rf'"{after}",\s*"(\w+)"', source)
-        assert listed and all(name == "year" for name in listed), (module, after, listed)
+        for block in re.findall(r"\[([^\[\]]*\"file\"[^\[\]]*)\]", source):
+            names = re.findall(r'"([^"]+)"', block)
+            if "folder" not in names:
+                continue                                # non è una fila di colonne
+            found += 1
+            anchor = "artist" if "artist" in names else "file"
+            assert names.index("year") == names.index(anchor) + 1, (module, names)
+    assert found == 4
