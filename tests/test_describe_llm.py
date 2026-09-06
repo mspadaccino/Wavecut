@@ -159,3 +159,11 @@ def test_the_curator_fails_loudly_and_skips_the_empty_case():
     quiet = _Client(RuntimeError("must not be called"))
     assert ClaudeCurator(client=quiet).curate("80s", Query(), _frame(), [], 5).picks == []
     assert quiet.messages.calls == []
+
+
+def test_the_curator_gets_more_time_than_the_reader():
+    from core.analysis.describe_llm import (CURATE_TIMEOUT, TIMEOUT_SECONDS,
+                                            ClaudeCurator)
+    assert CURATE_TIMEOUT > TIMEOUT_SECONDS
+    assert ClaudeCurator(api_key="sk")._timeout == CURATE_TIMEOUT
+    assert ClaudeReader(api_key="sk")._timeout == TIMEOUT_SECONDS

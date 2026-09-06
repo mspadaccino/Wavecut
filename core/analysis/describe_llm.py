@@ -178,8 +178,10 @@ def _explain(trouble: Exception) -> str:
         return "The API key has no permission for this model."
     if name in ("RateLimitError",):
         return "Too many requests for this key right now — try again in a moment."
-    if name in ("APITimeoutError", "APIConnectionError"):
-        return "No answer from the network — read by the rules instead."
+    if name == "APITimeoutError":
+        return "No answer from the model in time."
+    if name == "APIConnectionError":
+        return "No answer from the network."
     if name == "BadRequestError" and "credit" in str(trouble).lower():
         return "The key has no credit left."
     return f"The model could not be reached ({name})."
@@ -234,6 +236,12 @@ CANDIDATES_PER_PICK = 3
 # Per quanti brani si chiede anche il perché: dieci righe si leggono, cento
 # no, e ogni riga costa.
 REASONS_FOR = 10
+
+# Scegliere fra trecento righe non è leggere una frase: la risposta sono
+# cento voci, e i quindici secondi del lettore non bastano. Due minuti, e
+# spazio per le cento voci più il pensiero che le precede.
+CURATE_TIMEOUT = 120.0
+CURATE_MAX_TOKENS = 8192
 
 CURATE_PROMPT = """You curate a DJ's playlist from a shortlist.
 
@@ -295,7 +303,12 @@ def _curation_schema():
 
 
 class ClaudeCurator(ClaudeReader):
-    """Sceglie dentro una rosa. Stesso client e stessa chiave del lettore."""
+    """Sceglie dentro una rosa. Stessa chiave del lettore, più tempo."""
+
+    def __init__(self, api_key: str | None = None, model: str = DEFAULT_MODEL,
+                 client=None, timeout: float = CURATE_TIMEOUT) -> None:
+        super().__init__(api_key=api_key, model=model, client=client,
+                         timeout=timeout)
 
     def curate(self, phrase: str, query: Query, frame,
                candidates: list[int], size: int) -> Curation:
@@ -312,7 +325,7 @@ class ClaudeCurator(ClaudeReader):
         try:
             response = self.client.messages.parse(
                 model=self.model,
-                max_tokens=MAX_TOKENS,
+                max_tokens=CURATE_MAX_TOKENS,
                 output_config={"effort": EFFORT},
                 system=CURATE_PROMPT.format(size=size, reasons=REASONS_FOR),
                 messages=[{"role": "user", "content": asked}],
