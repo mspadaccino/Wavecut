@@ -26,6 +26,7 @@ nessuna finestra di errore, nessuna funzione che sparisce.
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from core.analysis.describe import Query, Vocabulary, summary
@@ -220,3 +221,122 @@ class Readings:
             del everything[self.key(text)]
             self.path.write_text(json.dumps(everything, indent=2,
                                             ensure_ascii=False), "utf-8")
+
+
+# --------------------------------------------------------------------------
+# la cura: Claude sceglie dentro una rosa, non dentro la libreria
+# --------------------------------------------------------------------------
+
+# Quanti candidati per ogni brano voluto: la ricerca locale ne porta tre
+# volte tanti, e Claude tiene i migliori.
+CANDIDATES_PER_PICK = 3
+
+# Per quanti brani si chiede anche il perché: dieci righe si leggono, cento
+# no, e ogni riga costa.
+REASONS_FOR = 10
+
+CURATE_PROMPT = """You curate a DJ's playlist from a shortlist.
+
+The DJ described the playlist in a phrase; the app read it into a form and
+searched the library, and here is the shortlist it found — one track per
+line, numbered, with what is known about each: title, artist, year, tempo,
+key, the genre and mood labels a model gave it. Your job is to pick the best
+{size} tracks for what the DJ asked, using what you know about these records:
+which are the classics that fill a floor, which are the versions DJs play,
+which do not belong despite passing the filters. Prefer tracks that fit the
+phrase in spirit, not only in label. Keep the DJ's language for the reasons.
+
+Answer with the picks in the order you would recommend them, best first, as
+JSON: {{"picks": [{{"id": <number>, "why": <short reason or null>}}]}}.
+Give a reason for the first {reasons} only; null for the rest. Pick at most
+{size}. Never invent an id; if fewer than {size} deserve the list, pick fewer.
+"""
+
+
+@dataclass
+class Curation:
+    """Cosa Claude ha tenuto: le posizioni scelte nell'ordine suo, e il
+    perché per le prime."""
+
+    picks: list[int]
+    reasons: dict[int, str] = field(default_factory=dict)
+
+
+def candidate_line(number: int, row) -> str:
+    """Un candidato in una riga: quello che si sa, corto."""
+    title = str(row.get("title") or "").strip()
+    artist = str(row.get("artist") or "").strip()
+    name = f"{artist} - {title}".strip(" -") or str(row.get("name") or "")
+    pieces = [f"{number}. {name}"]
+    for key, label in (("year", ""), ("bpm", " bpm"), ("camelot", "")):
+        value = row.get(key)
+        if value is None or value != value or not str(value):
+            continue                                    # manca, o è nan
+        pieces.append(f"{float(value):.0f}{label}" if key in ("year", "bpm")
+                      else f"{value}{label}")
+    for key in ("genres", "moods"):
+        value = str(row.get(key) or "").strip()
+        if value:
+            pieces.append(value)
+    return " | ".join(pieces)
+
+
+def _curation_schema():
+    from pydantic import BaseModel
+
+    class Pick(BaseModel):
+        id: int
+        why: str | None = None
+
+    class Picks(BaseModel):
+        picks: list[Pick] = []
+
+    return Picks
+
+
+class ClaudeCurator(ClaudeReader):
+    """Sceglie dentro una rosa. Stesso client e stessa chiave del lettore."""
+
+    def curate(self, phrase: str, query: Query, frame,
+               candidates: list[int], size: int) -> Curation:
+        """I `size` migliori fra `candidates` (posizioni nel frame) per la
+        frase, nell'ordine di Claude. Un id inventato cade; nessuna
+        risposta o un guasto sono un `ReadingFailed`."""
+        if not candidates or size <= 0:
+            return Curation(picks=[])
+        listed = "\n".join(candidate_line(n + 1, frame.loc[i])
+                           for n, i in enumerate(candidates))
+        asked = (f"The DJ asked: {phrase.strip()}\n"
+                 f"Read as: {query.how_read or summary(query)}\n\n"
+                 f"Shortlist:\n{listed}")
+        try:
+            response = self.client.messages.parse(
+                model=self.model,
+                max_tokens=MAX_TOKENS,
+                output_config={"effort": EFFORT},
+                system=CURATE_PROMPT.format(size=size, reasons=REASONS_FOR),
+                messages=[{"role": "user", "content": asked}],
+                output_format=_curation_schema(),
+            )
+        except ReadingFailed:
+            raise
+        except Exception as trouble:                    # noqa: BLE001
+            raise ReadingFailed(_explain(trouble)) from trouble
+        if getattr(response, "stop_reason", None) == "refusal":
+            raise ReadingFailed("The model declined to curate this list.")
+        form = getattr(response, "parsed_output", None)
+        if form is None:
+            raise ReadingFailed("The model answered without the picks.")
+        picks, reasons, seen = [], {}, set()
+        for pick in form.picks:
+            number = int(pick.id)
+            if not 1 <= number <= len(candidates) or number in seen:
+                continue
+            seen.add(number)
+            index = candidates[number - 1]
+            picks.append(index)
+            if pick.why:
+                reasons[index] = str(pick.why).strip()
+            if len(picks) >= size:
+                break
+        return Curation(picks=picks, reasons=reasons)

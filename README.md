@@ -503,6 +503,16 @@ an even sample of everything that passes, spread across the years. The list
 comes out magic-sorted. Tick what you want, then **Add** it to the playlist
 or **Save** it to the shelf as a playlist named after the phrase.
 
+**Curate with Claude** adds one step after the search. The local search
+brings three candidates for every track wanted, one line each — title,
+artist, year, tempo, key, labels — and the shortlist goes to Claude with
+your phrase. Claude keeps the best ones in its own order, with a reason for
+the first few: it knows the records, which are the classics that fill a
+floor and which versions DJs play, and that is the one thing the filters
+cannot know. A few cents a search, on your credit; off by default, and off
+whenever **Ask Claude** is. If the answer does not come, the local list is
+shown and one line says why.
+
 **Years come from the track, not from a model.** When a track goes on the
 map, its year is read with its title and artist: the original date, then
 the release date, from the file's tags, and failing those a year in
@@ -511,6 +521,19 @@ Thriller/*. A bare four-digit number in a title is left alone: *Disco 2000*
 is a title. A filter on years keeps only tracks that carry one, and the tab
 says how many were left out for not having it. A map built before years
 were read is completed from the terminal with `map_cli.py --years`, once.
+
+Half a DJ library has no year in its tags at all — compilations ripped
+bare, renamed files, promos. For those, `years_cli.py` asks Claude the
+**original release year** of the recording (not the reissue, not the
+compilation), once, through the batch API at half price: forty tracks a
+request, title and artist from the tags plus the file and folder names,
+nothing else. The answer goes into a field of its own, `year_guess`, with
+how sure Claude was; the tag is never overwritten. A filter reads the tag
+when there is one, the estimate when Claude was fairly sure of it, and the
+tab says how many estimates a list relies on. `--dry-run` says how many
+tracks would go and what it would cost; `--submit --limit 200` is the trial;
+`--status` and `--collect` finish the job, hours later if you like — the
+lot is remembered on disk next to the map.
 
 ### The tools, side by side
 
@@ -1117,6 +1140,7 @@ that were already processed; `--no-cache` forces re-analysis.
 | `energy_cli.py` | measures the four energy fields — re-reads the audio, resumable |
 | `mood_cli.py` | re-scores valence from the stored embeddings: no audio, minutes instead of hours |
 | `zoo_cli.py` | tries the model zoo's other Discogs-EffNet heads (aggressive, relaxed, party, danceability) — reports only, writes nothing |
+| `years_cli.py` | asks Claude the original release year of the tracks the tags do not date — batch API, half price, once — see [Describe](#describe-a-playlist-from-a-phrase) |
 
 ---
 
@@ -1291,7 +1315,7 @@ qt_app/              # the desktop app: pages, widgets, AppState (Qt signals),
 packaging/           # the standalone bundle: PyInstaller spec, the single
 │                    #   entry point, icon, build scripts, Windows installer
 tests/               # pytest; Qt pages under pytest-qt; figure snapshot tests
-cli.py, map_cli.py, energy_cli.py, mood_cli.py, tag_cli.py, zoo_cli.py
+cli.py, map_cli.py, energy_cli.py, mood_cli.py, tag_cli.py, zoo_cli.py, years_cli.py
 ```
 
 The rule that holds `core/viz` together: its functions take dataframes and
@@ -1324,6 +1348,7 @@ Key engine modules (`core/analysis/`):
 | `describe_llm.py` | the Claude reader: the phrase plus the label vocabulary go out, the form comes back (structured output), readings remembered on disk |
 | `api_keys.py` | the user's API key: environment, system keychain, or a private file |
 | `years.py` | the year of a track from its tags or from a bracketed year in its name, and the backfill onto the map |
+| `year_guess.py` | the year Claude estimates for the undated tracks: batch requests, answers back onto the rows by path, the lot remembered on disk |
 | `journey.py` | the Journey: from a track to another in N steps — a corridor between the ends, Viterbi over the positions with the arc, no repeats |
 | `radio.py` | Radio Mix: a playlist from a group — split into souls, maximal marginal relevance, drift, negatives |
 | `journal.py` | `choices.jsonl`: one line per choice made in Build a set, for learning later |

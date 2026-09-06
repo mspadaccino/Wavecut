@@ -241,3 +241,94 @@ def test_playlist_names_come_from_the_phrase():
     assert playlist_name("  synth pop   anni 80 ") == "synth pop anni 80"
     assert playlist_name("a/b") == "Describe"
     assert playlist_name("") == "Describe"
+
+
+# --- la cura ---
+
+class _Curator:
+    def __init__(self, answer) -> None:
+        self.answer = answer
+        self.calls = []
+
+    def curate(self, phrase, query, frame, candidates, size):
+        self.calls.append((phrase, list(candidates), size))
+        if isinstance(self.answer, Exception):
+            raise self.answer
+        return self.answer
+
+
+def _curating_panel(qtbot, tmp_path, monkeypatch, curator, key="sk-test"):
+    monkeypatch.setattr("qt_app.pages.map.describe_panel.run_in_pool",
+                        lambda job, done, failed=None: _run_now(job, done, failed))
+    from core.analysis.shelf import Shelf
+    from qt_app.pages.map.describe_panel import DescribePanel
+    from qt_app.pages.map.library import Library
+
+    frame = library()
+    at_path = {frame.at[i, "path"]: i for i in range(len(frame))}
+    lib = Library(store=_Store(len(frame)), frame=frame, common={},
+                  at_path=at_path,
+                  cost=TransitionCost(_Store(len(frame)).embeddings,
+                                      frame["bpm"].tolist(),
+                                      frame["camelot"].tolist()))
+    panel = DescribePanel(
+        wire_table=lambda table: None, shelf=Shelf(tmp_path / "shelf"),
+        readings=Readings(tmp_path / "readings.json"),
+        reader_factory=lambda k: _Reader(Query()),
+        curator_factory=lambda k: curator, keys=_Keys(key),
+        settings=QSettings(str(tmp_path / "settings.ini"),
+                           QSettings.Format.IniFormat))
+    qtbot.addWidget(panel)
+    panel.set_library(lib)
+    return panel
+
+
+def test_curation_asks_claude_over_a_wider_shortlist_and_keeps_its_picks(qtbot, tmp_path, monkeypatch):
+    from core.analysis.describe_llm import Curation
+    curator = _Curator(Curation(picks=[1], reasons={1: "the classic"}))
+    panel = _curating_panel(qtbot, tmp_path, monkeypatch, curator)
+    panel._curate.setChecked(True)
+    panel._size.setValue(1)
+    panel._phrase.setText("synth pop")
+    panel._genres.set_checked(["Electronic - Synth-pop"])
+    panel._on_search()
+    phrase, candidates, size = curator.calls[0]
+    assert phrase == "synth pop" and size == 1
+    assert len(candidates) == 3                          # tre per brano voluto
+    assert panel._table.paths() == ["/x/two.mp3"]
+    assert "Claude kept 1 of 3" in panel._found_told.text()
+    assert "the classic" in panel._reasons.text() and panel._reasons.isVisibleTo(panel)
+    assert panel._search.isEnabled()
+
+
+def test_curation_is_off_without_ask_claude_and_falls_back_on_trouble(qtbot, tmp_path, monkeypatch):
+    curator = _Curator(ReadingFailed("The key has no credit left."))
+    panel = _curating_panel(qtbot, tmp_path, monkeypatch, curator)
+    panel._curate.setChecked(True)
+    panel._ask_claude.setChecked(False)
+    panel._genres.set_checked(["Electronic - Synth-pop"])
+    panel._on_search()
+    assert curator.calls == []                           # spento: niente rosa
+    assert len(panel._table.paths()) == 4                # la lista locale intera
+
+    panel._ask_claude.setChecked(True)
+    panel._size.setValue(2)
+    panel._on_search()
+    assert len(curator.calls) == 1
+    assert "no credit" in panel._found_told.text()
+    assert len(panel._table.paths()) == 2                # la lista locale, al numero chiesto
+    assert not panel._reasons.isVisibleTo(panel)
+
+
+def test_the_years_hint_counts_claudes_estimates(qtbot, tmp_path, monkeypatch):
+    panel = _panel(qtbot, tmp_path, monkeypatch)
+    frame = panel._lib.frame
+    frame["year_guess"] = [None, None, None, 1987.0]
+    frame["year_guess_conf"] = [0, 0, 0, 0.9]
+    panel.set_library(panel._lib)
+    assert "4 of 4 tracks carry a year (1 estimated by Claude)" in panel._years_hint.text()
+    panel._years_on.setChecked(True)
+    panel._year_from.setValue(1980)
+    panel._year_to.setValue(1989)
+    panel._on_search()
+    assert "1 dated by Claude's estimate" in panel._found_told.text()

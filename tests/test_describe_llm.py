@@ -104,3 +104,58 @@ def test_a_broken_readings_file_reads_as_empty(tmp_path):
     assert Readings(path).get("x") is None
     Readings(path).put("x", Query())
     assert Readings(path).get("x") == Query()
+
+
+# --- la cura ---
+
+def _picks(*pairs):
+    from core.analysis.describe_llm import _curation_schema
+    schema = _curation_schema()
+    return schema(picks=[{"id": i, "why": why} for i, why in pairs])
+
+
+def _frame():
+    import pandas as pd
+    return pd.DataFrame({
+        "name": ["a.mp3", "b.mp3", "c.mp3"], "title": ["A", "B", ""],
+        "artist": ["Art", "", ""], "year": [1983, None, 1990],
+        "bpm": [120.0, None, 128.0], "camelot": ["8A", "", "3B"],
+        "genres": ["Electronic - House", "", "Rock - New Wave"],
+        "moods": ["happy", "", ""],
+    }, index=[10, 20, 30])                              # posizioni di libreria
+
+
+def test_candidate_lines_are_short_and_skip_what_is_unknown():
+    from core.analysis.describe_llm import candidate_line
+    frame = _frame()
+    assert candidate_line(1, frame.loc[10]) == \
+        "1. Art - A | 1983 | 120 bpm | 8A | Electronic - House | happy"
+    assert candidate_line(3, frame.loc[30]) == "3. c.mp3 | 1990 | 128 bpm | 3B | Rock - New Wave"
+
+
+def test_the_curator_keeps_claudes_order_drops_bad_ids_and_caps_at_size():
+    from core.analysis.describe_llm import ClaudeCurator
+    client = _Client(_Response(_picks((3, "the floor filler"), (9, None),
+                                      (1, None), (3, None), (2, None))))
+    got = ClaudeCurator(client=client).curate(
+        "80s", Query(years=(1980, 1989)), _frame(), candidates=[10, 20, 30], size=2)
+    assert got.picks == [30, 10]                        # 3 → 30, 9 cade, 1 → 10, poi basta
+    assert got.reasons == {30: "the floor filler"}
+    sent = client.messages.calls[0]
+    assert "The DJ asked: 80s" in sent["messages"][0]["content"]
+    assert "1. Art - A" in sent["messages"][0]["content"]
+    assert "pick the best 2 tracks" in " ".join(sent["system"].split())
+
+
+def test_the_curator_fails_loudly_and_skips_the_empty_case():
+    from core.analysis.describe_llm import ClaudeCurator
+
+    class RateLimitError(Exception):
+        pass
+
+    with pytest.raises(ReadingFailed, match="Too many requests"):
+        ClaudeCurator(client=_Client(RateLimitError())).curate(
+            "80s", Query(), _frame(), [10], size=1)
+    quiet = _Client(RuntimeError("must not be called"))
+    assert ClaudeCurator(client=quiet).curate("80s", Query(), _frame(), [], 5).picks == []
+    assert quiet.messages.calls == []

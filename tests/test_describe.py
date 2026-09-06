@@ -154,3 +154,29 @@ def test_search_stops_at_size_and_survives_no_embeddings():
     query = Query(genres=["Electronic - Synth-pop"])
     assert len(search(frame, fan(len(frame)), query, size=1).tracks) == 1
     assert search(frame, None, query, size=5).tracks == [0, 4, 1]
+
+
+# --- l'anno stimato ---
+
+def test_a_confident_guess_dates_a_track_the_tags_did_not():
+    from core.analysis.describe import guessed_years, years_of
+    frame = library()
+    frame["year_guess"] = [None, None, None, None, 1984.0, 1983.0]
+    frame["year_guess_conf"] = [0, 0, 0, 0, 0.9, 0.3]
+    years = years_of(frame)
+    assert years.at[4] == 1984                          # la stima sicura entra
+    assert years.at[0] == 1980                          # il tag vince sempre
+    assert years.at[5] == 1928                          # il tag c'era
+    assert pool(frame, Query(years=(1980, 1989))) == [0, 1, 2, 4]
+    assert list(guessed_years(frame)) == [False, False, False, False, True, False]
+    found = search(frame, fan(len(frame)), Query(years=(1980, 1989)), size=10)
+    assert found.guessed == 1 and found.no_year == 0
+
+
+def test_a_weak_guess_does_not_date():
+    from core.analysis.describe import years_of
+    frame = library()
+    frame["year_guess"] = [None, None, None, None, 1984.0, None]
+    frame["year_guess_conf"] = [0, 0, 0, 0, 0.5, 0]
+    assert np.isnan(years_of(frame).at[4])
+    assert search(frame, None, Query(years=(1980, 1989)), size=10).no_year == 1

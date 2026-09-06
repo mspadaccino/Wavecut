@@ -28,7 +28,9 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox,
 
 from core.analysis import api_keys, describe, describe_lexicon
 from core.analysis.describe import Query, Vocabulary
-from core.analysis.describe_llm import ClaudeReader, Readings, ReadingFailed
+from core.analysis.describe_llm import (CANDIDATES_PER_PICK, ClaudeCurator,
+                                        ClaudeReader, Curation, Readings,
+                                        ReadingFailed)
 from core.analysis.duplicates import song_key
 from core.analysis.mixing import magic_sort
 from core.analysis.shelf import Shelf, valid_name
@@ -50,6 +52,7 @@ NO_COLLECTION = "— collections —"
 # Dove si ricorda se chiedere a Claude: il modello costa credito, e chi ha
 # la chiave deve poterlo tenere spento senza toglierla.
 ASK_CLAUDE_KEY = "describe/ask_claude"
+CURATE_KEY = "describe/curate"
 
 # Le collezioni pronte: le frasi che il lessico conosce per nome. Si
 # leggono senza chiave e senza rete, e servono anche da esempio di cosa
@@ -81,7 +84,7 @@ class DescribePanel(QWidget):
     def __init__(self, wire_table, shelf: Shelf | None = None,
                  readings: Readings | None = None, reader_factory=None,
                  keys=api_keys, settings: QSettings | None = None,
-                 parent=None) -> None:
+                 curator_factory=None, parent=None) -> None:
         super().__init__(parent)
         self._lib: Library | None = None
         self._vocabulary = Vocabulary()
@@ -92,8 +95,13 @@ class DescribePanel(QWidget):
         # dai test, che un modello non lo chiamano.
         self._reader_factory = reader_factory or (
             lambda key: ClaudeReader(api_key=key))
+        # Il curatore: chi sceglie dentro la rosa. Di default lo stesso
+        # client del lettore; nei test, un finto.
+        self._curator_factory = curator_factory or (
+            lambda key: ClaudeCurator(api_key=key))
         self._keys = keys
         self._reading = False
+        self._curating = False
         self._found: list[int] = []
         self._build(wire_table)
         self._tell_reader()
@@ -236,6 +244,19 @@ class DescribePanel(QWidget):
         self._variety.setToolTip(theme.hint(
             "<b>0 = close, doubles allowed · 1 = spread out</b><br>How far "
             "the fill-up wanders from the seeds — the Radio Mix knob."))
+        self._curate = QCheckBox("Curate with Claude")
+        self._curate.setToolTip(theme.hint(
+            "After the local search, the shortlist — three candidates for "
+            "every track wanted, one line each: title, artist, year, "
+            "tempo, key, labels — goes to Claude with your phrase, and "
+            "Claude keeps the best ones in its order, with a reason for "
+            "the first few. It knows the records: which are the classics, "
+            "which versions DJs play. A few cents a search, on your "
+            "credit. Needs the key and «Ask Claude»."))
+        self._curate.setChecked(
+            str(self._settings.value(CURATE_KEY, "false")).lower() == "true")
+        self._curate.toggled.connect(
+            lambda on: self._settings.setValue(CURATE_KEY, "true" if on else "false"))
         self._search = QPushButton("🔎 Search")
         self._search.setToolTip(theme.hint(
             "Applies the form to the map, in this app, with nothing sent "
@@ -249,10 +270,14 @@ class DescribePanel(QWidget):
         search_row.addSpacing(8)
         search_row.addWidget(QLabel("Variety"))
         search_row.addWidget(self._variety)
+        search_row.addSpacing(8)
+        search_row.addWidget(self._curate)
         search_row.addStretch(1)
         search_row.addWidget(self._search)
 
         self._found_told = _dim("")
+        self._reasons = _dim("")
+        self._reasons.setVisible(False)
         self._table = TrackTable(checkable=True, favouritable=True)
         wire_table(self._table)
         self._table.setVisible(False)
@@ -287,6 +312,7 @@ class DescribePanel(QWidget):
         box.addLayout(grid)
         box.addLayout(search_row)
         box.addWidget(self._found_told)
+        box.addWidget(self._reasons)
         box.addLayout(pick_row)
         box.addWidget(self._table, stretch=2)
         box.addLayout(send_row)
@@ -306,18 +332,21 @@ class DescribePanel(QWidget):
         self._moods.set_options(self._vocabulary.moods, keep=True)
         low, high = span(frame, "bpm", describe.BPM_FLOOR, describe.BPM_CEILING)
         self._bpm.set_span(low, high)
-        dated = int(frame["year"].notna().sum()) if "year" in frame else 0
+        dated = int(describe.years_of(frame).notna().sum())
+        guessed = int(describe.guessed_years(frame).sum())
         self._years_hint.setText(
             f"{dated:,} of {len(frame):,} tracks carry a year"
+            + (f" ({guessed:,} estimated by Claude)" if guessed else "")
             + ("" if dated == len(frame) else
-               " — the others have none in their tags or their name"))
+               " — the rest can be estimated: years_cli.py"))
         self._years_hint.setToolTip(theme.hint(
             "A filter on years keeps only tracks that carry one: a track "
             "without a year is not an 80s track, it is an unknown one. "
             "Years are read when a track goes on the map, from its tags or "
-            "from a year in brackets in the file or folder name. A map "
-            "built before years were read is completed from the terminal: "
-            "<code>map_cli.py --years</code>."))
+            "from a year in brackets in the file or folder name. For the "
+            "tracks that have neither, <code>years_cli.py</code> asks "
+            "Claude the original release year, once, in batch; an estimate "
+            "counts only when Claude is fairly sure of it."))
 
     # ------------------------------------------------------------------
     # chi legge
@@ -450,16 +479,59 @@ class DescribePanel(QWidget):
     # ------------------------------------------------------------------
     # la ricerca
     # ------------------------------------------------------------------
+    def curates(self) -> bool:
+        return self._curate.isChecked() and self.asks_claude()
+
     def _on_search(self) -> None:
-        if self._lib is None:
+        if self._lib is None or self._curating:
             return
         lib, frame = self._lib, self._lib.frame
         query = self.query()
+        size = self._size.value()
+        # Con la cura, la ricerca locale porta una rosa più larga e Claude
+        # tiene i migliori; senza, porta la lista e basta.
+        wanted = size * CANDIDATES_PER_PICK if self.curates() else size
         found = describe.search(
             frame, lib.store.embeddings[:len(frame)], query,
-            size=self._size.value(), variety=self._variety.value(),
+            size=wanted, variety=self._variety.value(),
             song_of=lambda i: song_key(Path(frame.at[i, "path"])))
-        ordered = magic_sort(lib.cost, found.tracks)
+        if not self.curates() or not found.tracks:
+            self._show_found(found, found.tracks[:size], {}, "")
+            return
+        self._curating = True
+        self._search.setEnabled(False)
+        self._found_told.setText(
+            f"Claude is choosing {size} out of {len(found.tracks)}…")
+        curator = self._curator_factory(self._keys.read())
+        phrase = self._phrase.text()
+        run_in_pool(lambda: curator.curate(phrase, query, frame,
+                                           found.tracks, size),
+                    lambda curation: self._on_curated(found, size, curation),
+                    lambda trouble: self._on_curation_failed(found, size, trouble))
+
+    def _on_curated(self, found: describe.Match, size: int,
+                    curation: Curation) -> None:
+        self._curating = False
+        self._search.setEnabled(True)
+        picks = curation.picks or found.tracks[:size]
+        told = (f"Claude kept {len(curation.picks)} of {len(found.tracks)}"
+                if curation.picks else
+                "Claude kept none — showing the local list")
+        self._show_found(found, picks, curation.reasons, told)
+
+    def _on_curation_failed(self, found: describe.Match, size: int,
+                            trouble: Exception) -> None:
+        self._curating = False
+        self._search.setEnabled(True)
+        line = str(trouble) if isinstance(trouble, ReadingFailed) \
+            else f"The model could not be reached ({type(trouble).__name__})."
+        self._show_found(found, found.tracks[:size], {},
+                         f"⚠️ {line} Showing the local list.")
+
+    def _show_found(self, found: describe.Match, tracks: list[int],
+                    reasons: dict[int, str], curated: str) -> None:
+        lib, frame = self._lib, self._lib.frame
+        ordered = magic_sort(lib.cost, tracks)
         self._found = ordered
         shown = numbered_rows(frame, ordered, lib.common)
         self._table.set_tracks(
@@ -468,19 +540,27 @@ class DescribePanel(QWidget):
         self._table.setVisible(bool(ordered))
         self._add.setEnabled(bool(ordered))
         self._shelve.setEnabled(bool(ordered))
-        self._found_told.setText(self._tell_found(found, len(frame)))
+        self._found_told.setText(
+            self._tell_found(found, len(tracks), len(frame))
+            + (f" · {curated}" if curated else ""))
+        lines = [f"<b>{frame.at[i, 'title'] or frame.at[i, 'name']}</b> — {why}"
+                 for i, why in reasons.items() if i in ordered]
+        self._reasons.setText("<br>".join(lines))
+        self._reasons.setVisible(bool(lines))
 
     @staticmethod
-    def _tell_found(found: describe.Match, total: int) -> str:
-        if not found.tracks:
+    def _tell_found(found: describe.Match, shown: int, total: int) -> str:
+        if not shown:
             told = "No track matches"
             if found.no_year and found.no_year == total:
                 told += " — no track on the map carries a year yet"
             return told + "."
-        pieces = [f"{len(found.tracks)} track(s)",
+        pieces = [f"{shown} track(s)",
                   f"{len(found.pool):,} of {total:,} pass the filters"]
         if found.seeds:
             pieces.append(f"{len(found.seeds)} carry the labels")
+        if found.guessed:
+            pieces.append(f"{found.guessed} dated by Claude's estimate")
         if found.no_year:
             pieces.append(f"{found.no_year:,} without a year left out")
         return " · ".join(pieces)

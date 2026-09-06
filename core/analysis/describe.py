@@ -31,6 +31,7 @@ import pandas as pd
 
 from core.analysis import radio
 from core.analysis.duplicates import folded
+from core.analysis.year_guess import MIN_CONFIDENCE
 from core.analysis.years import FIRST_YEAR, LAST_YEAR
 
 # Cento brani: uno scaffale per una serata, non una scaletta da suonare
@@ -200,6 +201,22 @@ def _numbers(frame: pd.DataFrame, column: str) -> pd.Series:
     return pd.to_numeric(frame[column], errors="coerce")
 
 
+def years_of(frame: pd.DataFrame) -> pd.Series:
+    """L'anno su cui un filtro legge ogni brano: il tag se c'è, altrimenti
+    la stima di Claude quando è abbastanza sicura (`year_guess` con
+    `year_guess_conf` da `MIN_CONFIDENCE` in su), altrimenti niente."""
+    year = _numbers(frame, "year")
+    guess = _numbers(frame, "year_guess")
+    confidence = _numbers(frame, "year_guess_conf")
+    trusted = guess.where(confidence >= MIN_CONFIDENCE)
+    return year.where(year.notna(), trusted)
+
+
+def guessed_years(frame: pd.DataFrame) -> pd.Series:
+    """Dove l'anno letto è una stima e non un tag."""
+    return _numbers(frame, "year").isna() & years_of(frame).notna()
+
+
 def _haystack(frame: pd.DataFrame) -> pd.Series:
     """Dove si cercano le parole del titolo: nome del file e titolo dei
     tag, con gli accenti piegati come in `matching_tracks`."""
@@ -214,16 +231,17 @@ def pool(frame: pd.DataFrame, query: Query) -> list[int]:
     """Chi passa i filtri duri: anni, tempo, durata, parole nel titolo.
 
     Un brano senza anno NON passa un filtro sugli anni: «anni 80» con
-    dentro tutto ciò che non si sa datare non sarebbe più un anni 80.
-    Quanti siano lo dice `Match.no_year`, e il rimedio è il backfill. Un
+    dentro tutto ciò che non si sa datare non sarebbe più un anni 80. Vale
+    il tag, o una stima di Claude abbastanza sicura (`years_of`). Quanti
+    restino fuori lo dice `Match.no_year`, e quante stime siano entrate
+    `Match.guessed`; il rimedio è `years_cli.py`. Un
     brano senza tempo invece passa un filtro sul tempo, come nei filtri
     della pagina: non sappiamo dove cade, e "no" sarebbe una risposta a
     una domanda che non è stata posta.
     """
     keep = pd.Series(True, index=frame.index)
     if query.years is not None:
-        year = _numbers(frame, "year")
-        keep &= year.between(*query.years)
+        keep &= years_of(frame).between(*query.years)
     if query.bpm is not None:
         bpm = _numbers(frame, "bpm")
         keep &= bpm.isna() | bpm.between(*query.bpm)
@@ -297,6 +315,7 @@ class Match:
     seeds: list[int]       # chi porta le etichette, i primi a entrare
     tracks: list[int]      # la playlist, semi per primi
     no_year: int = 0       # brani tenuti fuori perché senza anno
+    guessed: int = 0       # brani della playlist datati da una stima
 
 
 def search(frame: pd.DataFrame, embeddings, query: Query,
@@ -313,13 +332,14 @@ def search(frame: pd.DataFrame, embeddings, query: Query,
     candidates = pool(frame, query)
     no_year = 0
     if query.years is not None:
-        no_year = int(_numbers(frame, "year").isna().sum())
+        no_year = int(years_of(frame).isna().sum())
 
     taken = seeds(frame, query, candidates, song_of)[:size]
     if not query.genres and not query.moods:
-        year = _numbers(frame, "year").fillna(LAST_YEAR + 1)
+        year = years_of(frame).fillna(LAST_YEAR + 1)
         by_year = sorted(candidates, key=lambda i: (float(year.at[i]), i))
-        return Match(query, candidates, [], spread(by_year, size), no_year)
+        return _matched(frame, query, candidates, [], spread(by_year, size),
+                        no_year)
 
     tracks = list(taken)
     room = size - len(tracks)
@@ -328,4 +348,11 @@ def search(frame: pd.DataFrame, embeddings, query: Query,
         rest = [i for i in candidates if i not in seeded]
         tracks += radio.tune(embeddings, taken, pool=rest, k=room,
                              variety=variety, song_of=song_of)
-    return Match(query, candidates, taken, tracks, no_year)
+    return _matched(frame, query, candidates, taken, tracks, no_year)
+
+
+def _matched(frame, query, candidates, taken, tracks, no_year) -> Match:
+    guessed = 0
+    if query.years is not None and tracks:
+        guessed = int(guessed_years(frame).loc[tracks].sum())
+    return Match(query, candidates, taken, tracks, no_year, guessed)
