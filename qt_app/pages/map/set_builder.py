@@ -908,7 +908,7 @@ class SetBuilderPanel(QWidget):
                 "_path": frame.at[i, "path"],
             })
         shown = pd.DataFrame(listed, columns=[
-            "#", "cost", "file", "title", "artist", "BPM", "key", "energy",
+            "#", "cost", "file", "title", "artist", "year", "BPM", "key", "energy",
             "groove", "emotion", "sound", "bpm cost", "key cost", "mood",
             "genres", "folder", "_path"])
         self._mixes_table.set_tracks(
@@ -1090,8 +1090,8 @@ class SetBuilderPanel(QWidget):
             self._roster_told.setText("No candidate left that passes the "
                                       "filters.")
             return
-        order = ["file", "cost", "BPM", "key", "energy", "groove", "emotion",
-                 "Δbpm", "Δkey", "Δenergy", "Δgroove", "copies", "mood",
+        order = ["file", "year", "cost", "BPM", "key", "energy", "groove",
+                 "emotion", "Δbpm", "Δkey", "Δenergy", "Δgroove", "copies", "mood",
                  "genres", "folder", "_path"]
         table = table[[c for c in order if c in table.columns]]
         self._roster_table.set_tracks(

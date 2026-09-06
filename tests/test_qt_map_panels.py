@@ -1178,3 +1178,19 @@ def test_the_shelf_view_lists_every_playlist_and_opens_one_on_double_click(
 def SHOWN_INDEX(column: str) -> int:
     from qt_app.pages.map.shelf_panel import SHOWN
     return SHOWN.index(column)
+
+
+def test_every_hand_listed_table_carries_the_year_after_the_artist():
+    """Tre tabelle scrivono le loro colonne a mano invece di prendere
+    `READING_ORDER`: la playlist, la Quick List, la rosa. L'anno ci deve
+    stare anche lì, dove l'occhio lo cerca — dopo l'artista, o dopo il
+    file dove l'artista non c'è."""
+    import re
+    from pathlib import Path
+
+    for module, after in (("playlist_panel.py", "artist"),
+                          ("set_builder.py", "artist"),
+                          ("set_builder.py", "file")):
+        source = Path("qt_app/pages/map", module).read_text("utf-8")
+        listed = re.findall(rf'"{after}",\s*"(\w+)"', source)
+        assert listed and all(name == "year" for name in listed), (module, after, listed)
