@@ -553,7 +553,7 @@ class SetBuilderPanel(QWidget):
             "ends wherever the cheapest transitions lead. Once reached, "
             "it is the last of the chain and the field opens again."))
         land.addWidget(self._end_told, stretch=1)
-        self._end_pick = QPushButton("Pick ▾")
+        self._end_pick = QPushButton("🎯 Pick")
         picks = QMenu(self)
         picks.addAction("The seed on the map", self._on_end_from_map)
         picks.addAction("A file, from Finder…", self._on_end_from_finder)
