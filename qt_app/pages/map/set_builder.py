@@ -99,12 +99,10 @@ TAB_HINTS = (
     "weights above the tabs. A list of options, judged one by one: they may well "
     "sound alike. With a group selected instead, this tab holds the group "
     "and magic sort.",
-    "<b>What comes next?</b><br>One track at a time: a roster of nine "
-    "mixes out of the last one, you take one, the roster is made again. "
-    "Trend looks a step ahead. Auto chain plans the next N for you — the "
-    "cheapest run of transitions, shaped by the arc of a set as much as "
-    "the Arc knob asks, towards a track to land on if you name one. The "
-    "order you build is the order that comes out.",
+    "<b>What comes next?</b><br>By hand: a roster of nine mixes out of "
+    "the track you stand on, you take one, the roster is made again. Or "
+    "Auto chain: the next N planned in one go, towards a track to land on "
+    "if you name one. The order you build is the order that comes out.",
     "<b>More like these.</b><br>A playlist from a group — your favourites "
     "or the map selection — not from one seed. Sound only, against the "
     "group's taste; each pick is penalised for resembling the ones before, "
@@ -482,6 +480,10 @@ class SetBuilderPanel(QWidget):
         branch = QHBoxLayout()
         branch.addWidget(QLabel("Branch from"))
         self._branch = QComboBox()
+        self._branch.setToolTip(theme.hint(
+            "The track you stand on: the roster mixes out of it, and Auto "
+            "chain starts from it. The last of the chain by default — pick "
+            "one in the middle to branch off it."))
         self._branch.setSizeAdjustPolicy(
             QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self._branch.currentIndexChanged.connect(self._on_branch)
@@ -492,11 +494,12 @@ class SetBuilderPanel(QWidget):
         self._trend = _knob(
             branch, "Trend", 0.0, "around the source", "a step ahead",
             "Where the chain is GOING, not just where it is. At 0 the roster "
-            "sits around the source track, as always. Above 0 it looks one "
-            "step ahead along the line from the previous track to the "
-            "source — on the map and in tempo — and proposes what lies "
-            "there: a rising set keeps rising. Needs a track before the "
-            "source; on the first track it does nothing.")
+            "sits around the track you stand on. Above 0 it looks one step "
+            "ahead along the line from the previous track to this one — in "
+            "sound and in tempo — and proposes what lies there: a rising "
+            "set keeps rising. Needs a track before this one; on the first "
+            "it does nothing. Roster only: Auto chain plans the whole run "
+            "and does not read it.")
         self._trend.valueChanged.connect(lambda _: self._refresh_roster())
         gbox.addLayout(branch)
 
@@ -512,48 +515,57 @@ class SetBuilderPanel(QWidget):
         grow = QHBoxLayout()
         grow.addWidget(self._roster_add, stretch=1)
         self._auto = QPushButton("⚡ Auto chain")
-        auto_why = theme.hint(
-            "The chain grows on its own, N tracks in one go: the cheapest "
-            "run of transitions through the tracks that pass the filters, "
-            "from the track in «Branch from» — same cost, same weights, "
-            "same rules on copies as picking by hand — planned as a whole, "
-            "not one step at a time, so the fifth track is chosen knowing "
-            "the first. Name a track to land on and the run ends there, "
-            "N tracks later; leave it open and it ends wherever the "
-            "transitions lead. No track twice, no twins back to back. "
-            "Unlike Radio Mix it judges tempo and key too, and keeps the "
-            "order it chose.")
-        self._auto.setToolTip(auto_why)
+        # La storia intera sta qui, sul bottone: gli altri controlli della
+        # corsa — i passi, Arc, Land on — dicono solo cosa fanno loro.
+        self._auto.setToolTip(theme.hint(
+            "<b>The chain grows on its own.</b><br>From the track in "
+            "«Branch from», the next N tracks are planned in one go: the "
+            "cheapest run of transitions through the tracks that pass the "
+            "filters — same cost and weights as the roster — chosen as a "
+            "whole, so the fifth track is picked knowing the first. Name a "
+            "track in «Land on» and the run ends there; leave it open and it "
+            "ends wherever the transitions lead. Arc bends the run into the "
+            "shape of a set. Nothing already on the chain, no track twice, "
+            "no twins back to back. Unlike Radio Mix it judges tempo and "
+            "key too, and keeps the order it chose."))
         self._auto.clicked.connect(self._on_auto_chain)
         grow.addWidget(self._auto)
         self._auto_steps = QSpinBox()
         self._auto_steps.setRange(1, AUTO_STEPS_MAX)
         self._auto_steps.setValue(AUTO_STEPS_DEFAULT)
-        self._auto_steps.setToolTip(auto_why)
+        self._auto_steps.setToolTip("How many tracks Auto chain adds — the "
+                                    "landing track included, when there is "
+                                    "one.")
         grow.addWidget(self._auto_steps)
         self._auto_arc = _knob(
             grow, "Arc", 0.5, "transitions only", "the shape of a set",
-            "How much each position of the run is asked to sit in its "
-            "chapter of the arc — Intro, Buildup, Tension, Climax, "
-            "Release: tempo, energy, mood and groove in the chapter's "
-            "band, on the scale of your library — against how cheap the "
-            "transition is. At 0 the run is the smoothest row of "
-            "transitions and nothing else. The arc spans the run, not "
-            "the whole chain.")
+            "How much Auto chain bends the run into the arc of a set — "
+            "Intro, Buildup, Tension, Climax, Release, each with its band of "
+            "tempo, energy, mood and groove on the scale of your library — "
+            "against how cheap each transition is. The run has an arc of "
+            "its own, first track to last, whatever is on the chain before "
+            "it.")
         gbox.addLayout(grow)
 
         # L'arrivo: dove la corsa deve finire, se lo si sa. Tre modi di
         # dirlo, in un menu — il seme sulla mappa, un file dal Finder, un
         # nome — e la ✕ per lasciarlo aperto.
         land = QHBoxLayout()
-        land.addWidget(QLabel("Land on"))
+        land_label = QLabel("Land on")
+        land.addWidget(land_label)
         self._end_told = QLabel("")
-        self._end_told.setToolTip(theme.hint(
-            "The track Auto chain lands on. Optional: without it the run "
-            "ends wherever the cheapest transitions lead. Once reached, "
-            "it is the last of the chain and the field opens again."))
+        land_why = theme.hint(
+            "Where Auto chain ends, if you know it. Open, the run ends "
+            "wherever the cheapest transitions lead. Reached, the landing "
+            "track is the last of the chain and the field opens again — "
+            "name the next one and the set goes on in legs.")
+        land_label.setToolTip(land_why)
+        self._end_told.setToolTip(land_why)
         land.addWidget(self._end_told, stretch=1)
         self._end_pick = QPushButton("🎯 Pick")
+        self._end_pick.setToolTip(theme.hint(
+            "Three ways to name it: the seed clicked on the map, a file "
+            "from the Finder, or part of its name."))
         picks = QMenu(self)
         picks.addAction("The seed on the map", self._on_end_from_map)
         picks.addAction("A file, from Finder…", self._on_end_from_finder)
